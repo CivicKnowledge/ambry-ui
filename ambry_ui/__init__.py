@@ -13,6 +13,10 @@ from flask_login import LoginManager
 
 import logging
 
+# Command declarations for `ambry config installcli`
+commands = ['ambry_ui.cli']
+
+
 # Default configuration
 app_config = {
     'host': os.getenv('AMBRY_UI_HOST', 'localhost'),

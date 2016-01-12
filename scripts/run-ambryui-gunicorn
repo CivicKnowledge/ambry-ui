@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Run the UI with gunicorn, using the default configuration
+
+exec gunicorn -w 4 --max-requests 10 -b 0.0.0.0:80 ambry_ui:app

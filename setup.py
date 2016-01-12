@@ -52,10 +52,10 @@ setup(
     zip_safe=False,
     install_requires=[x for x in reversed([str(x.req) for x in install_requires])],
     tests_require=[x for x in reversed([str(x.req) for x in tests_require])],
-    scripts=[],
+    scripts=['scripts/run-ambryui-gunicorn'],
     author=ps_meta.__author__,
     author_email=ps_meta.__author__,
-    url='https://github.com/CivicKnowledge/ambry-admin.git',
-    license='MIT',
+    url='https://github.com/CivicKnowledge/ambry-ui.git',
+    license='BSD',
     classifiers=classifiers
 )
