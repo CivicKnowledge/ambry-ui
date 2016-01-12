@@ -5,10 +5,6 @@ the Revised BSD License, included in this distribution as LICENSE.txt
 
 """
 
-
-# Copyright (c) 2015 Civic Knowledge. This file is licensed under the terms of
-# the Revised BSD License, included in this distribution as LICENSE.txt
-
 __all__ = ['command_name', 'make_parser', 'run_command']
 command_name = 'ui'
 
@@ -31,6 +27,28 @@ def make_parser(cmd):
     sp.add_argument('-d', '--debug', action='store_true', help="Set debugging mode", default=False)
     sp.add_argument('-N', '--no-accounts', action='store_true', help="Don't setup remotes and accounts", default=False)
 
+    sp = cmd.add_parser('user', help='Manage users')
+    sp.set_defaults(command=command_name)
+
+    ucmd = sp.add_subparsers(title='User Commands', help='Sub-commands for managing users')
+
+    usp = ucmd.add_parser('add', help='Add a user')
+    usp.set_defaults(subcommand=add_user)
+    usp.add_argument('-a', '--admin', action='store_true', default = False, help="Make the user an administrator")
+    usp.add_argument('user_name', help='Name of user')
+
+    usp = ucmd.add_parser('admin', help='Add or remove admin privledges')
+    usp.set_defaults(subcommand=user_admin)
+    usp.add_argument('-r', '--remove', action='store_true', default = False, help="Remove, rather than add, the privledge")
+    usp.add_argument('user_name', help='Name of user')
+
+    usp = ucmd.add_parser('remove', help='Remove a user')
+    usp.set_defaults(subcommand=remove_user)
+    usp.add_argument('user_name', help='Name of user')
+
+    usp = ucmd.add_parser('list', help='List users')
+    usp.set_defaults(subcommand=list_users)
+
 def run_command(args, rc):
     from ambry.library import new_library
     from ambry.cli import global_logger
@@ -42,6 +60,9 @@ def run_command(args, rc):
         l = None
 
     args.subcommand(args, l, rc) # Note the calls to sp.set_defaults(subcommand=...)
+
+def no_command(args, l, rc):
+    raise NotImplementedError()
 
 def start_ui(args, l, rc):
 
@@ -127,3 +148,82 @@ def start_ui(args, l, rc):
         warn("Failed to start ui: {}".format(e))
 
 
+def add_user(args, l, rc):
+    """Add or update a user"""
+
+    from getpass import getpass
+
+    account = l.find_or_new_account(args.user_name)
+
+    account.major_type = 'user'
+
+    account.access_key = args.user_name
+
+    if args.admin:
+        account.minor_type = 'admin'
+
+    account.encrypt_secret(getpass().strip())
+
+    account.url = None
+
+    l.commit()
+
+def user_admin(args, l, rc):
+    """Add or update a user"""
+
+    from ambry.orm.exc import NotFoundError
+
+    try:
+        account = l.account(args.user_name)
+
+        if account.major_type != 'user':
+            raise NotFoundError()
+
+        if args.remove:
+            account.minor_type = None
+        else:
+            account.minor_type = 'admin'
+
+        l.commit()
+
+    except NotFoundError:
+        warn("No account found for {}".format(args.user_name))
+
+def remove_user(args, l, rc):
+
+    from ambry.orm.exc import NotFoundError
+
+    try:
+        account = l.account(args.user_name)
+
+        if account.major_type != 'user':
+            raise NotFoundError()
+
+        l.delete_account(account)
+        l.commit()
+
+    except NotFoundError:
+        warn("No account found for {}".format(args.user_name))
+
+
+def list_users(args, l, rc):
+    from ambry.util import drop_empty
+    from tabulate import tabulate
+
+    headers = 'Id User Type'.split()
+
+    records = []
+
+    for k in l.accounts.keys():
+
+        acct = l.account(k)
+
+        if acct.major_type == 'user':
+            records.append([acct.account_id, acct.user_id, acct.minor_type])
+
+    if not records:
+        return
+
+    records = drop_empty([headers] + records)
+
+    prt(tabulate(records[1:], records[0]))
