@@ -1,6 +1,5 @@
 include requirements.txt
 include README.rst
 include LICENSE
-recursive-include ambry/support/ *
-recursive-include ambry/ui/static/ *
-recursive-include ambry/ui/templates/ *
+recursive-include ambry_ui/static *
+recursive-include ambry_ui/templates *
