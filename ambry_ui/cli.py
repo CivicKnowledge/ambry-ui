@@ -53,6 +53,8 @@ def make_parser(cmd):
 
     sp = cmd.add_parser('init', help='Initialize some library database values for the ui')
     sp.set_defaults(subcommand=db_init)
+    sp.add_argument('-t', '--title', help="Set the library title")
+    sp.add_argument('-v', '--virt-host', help="Set the virtual host name")
 
     sp = cmd.add_parser('run_args', help='Print evalable environmental vars for running the UI')
     sp.set_defaults(subcommand=run_args)
@@ -177,8 +179,15 @@ def db_init(args, l, rc):
     if not 'csrf_secret' in ui_config:
         ui_config['csrf_secret'] = str(uuid4())
 
-    if not 'website_title' in ui_config:
-        ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', 'AMbry Data Library')
+    if args.title:
+        ui_config['website_title'] = args.title
+    elif not 'website_title' in ui_config:
+        ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', args.title or 'Ambry Data Library')
+
+    if args.virt_host:
+        ui_config['virtual_host'] = args.virt_host
+    elif not ui_config['virtual_host']:
+        ui_config['virtual_host'] = None
 
     l.database.commit()
 
@@ -269,8 +278,8 @@ def list_users(args, l, rc):
         if acct.major_type == 'user':
             try:
                 secret = acct.secret
-            except:
-                secret = "<corrupt secret>"
+            except Exception as e:
+                secret = str(e) # "<corrupt secret>"
             records.append([acct.account_id, acct.user_id, acct.minor_type, secret])
 
     if not records:
