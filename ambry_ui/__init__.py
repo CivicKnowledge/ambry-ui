@@ -100,7 +100,9 @@ app = Flask(__name__)
 
 app.config.update(app_config)
 
-AmbryAppContext().app_init(app)
+aac = AmbryAppContext()
+aac.app_init(app)
+aac.close()
 
 csrf = CsrfProtect()
 csrf.init_app(app)

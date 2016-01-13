@@ -7,4 +7,5 @@ Flask-Session==0.1.1
 Flask-Login
 wtforms
 Flask-WTF
+Flask-Testing
 gunicorn==18 # I can't get 19 to run ...

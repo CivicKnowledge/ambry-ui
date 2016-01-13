@@ -17,8 +17,7 @@ aac = LocalProxy(get_aac)
 
 app.logger.setLevel(logging.INFO)
 
-
-def _jwt_required():
+def jwt_auth():
     """Extract the Authorization header and validate it against the database"""
     from jose import jwt
     from flask import request
@@ -44,14 +43,12 @@ def _jwt_required():
         app.logger.info("AuthError: Didn't get user '{}' ".format(user))
         abort(401)
 
-    if account.major_type != 'api':
+    if account.major_type not in ('user','api'):
         app.logger.info("User '{}' not api service type; got '{}'  ".format(user, account.major_type))
         abort(400)
 
-    secret = account.decrypt_secret()
-
     try:
-        claims = jwt.decode(token, secret, algorithms='HS256')
+        claims = jwt.decode(token, account.secret, algorithms='HS256')
     except jwt.JWTError:
         app.logger.info("AuthError: failed to verify token ")
         abort(401)
@@ -65,6 +62,8 @@ def _jwt_required():
         abort(401)
 
 
+    return 0
+
 def jwt_required(fn):
     """View decorator that requires a valid JWT token to be present in the request
 
@@ -72,20 +71,22 @@ def jwt_required(fn):
     from functools import wraps
     @wraps(fn)
     def decorator(*args, **kwargs):
-        _jwt_required()
+        r = jwt_auth()
+        if r != 0:
+            abort(r)
         return fn(*args, **kwargs)
     return decorator
 
 
-@app.route('/test', methods = ['GET'])
+@app.route('/auth-test', methods = ['GET', 'POST', 'PUT'])
 @jwt_required
 def test_get():
 
     r = aac.renderer
 
-    return r.json(
-        ok = True
-    )
+    content = request.get_json(silent=True)
+
+    return r.json(**content)
 
 #
 # Administration Interfaces

@@ -32,7 +32,7 @@ Run ``ambry ui -h`` to check that it worked.
 The main commands are:
 
 - start: Run a UI locally in development mode
-- user
+- user:
     - user add: Add or edit a user
     - user admin: Add or remove admin priveledges
     - user remove: Remove a user

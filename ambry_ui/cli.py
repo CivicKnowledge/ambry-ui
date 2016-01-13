@@ -35,6 +35,8 @@ def make_parser(cmd):
     usp = ucmd.add_parser('add', help='Add a user')
     usp.set_defaults(subcommand=add_user)
     usp.add_argument('-a', '--admin', action='store_true', default = False, help="Make the user an administrator")
+    usp.add_argument('-p', '--password', action='store_true', default=False, help="Reset the password")
+    usp.add_argument('-s', '--secret', action='store_true', default=False, help="Regenerate the API secret")
     usp.add_argument('user_name', help='Name of user')
 
     usp = ucmd.add_parser('admin', help='Add or remove admin privledges')
@@ -125,7 +127,7 @@ def start_ui(args, l, rc):
         # We just need to ensure it exists.
         account = l.find_or_new_account('admin', major_type='user', minor_type='admin')
         if not account.encrypted_secret:
-            account.encrypt_secret(random_string(20))
+            account.encrypt_password(random_string(20))
 
 
         l.commit()
@@ -150,6 +152,7 @@ def start_ui(args, l, rc):
 
 def add_user(args, l, rc):
     """Add or update a user"""
+    from ambry.util import random_string
 
     from getpass import getpass
 
@@ -162,7 +165,12 @@ def add_user(args, l, rc):
     if args.admin:
         account.minor_type = 'admin'
 
-    account.encrypt_secret(getpass().strip())
+    if not account.encrypted_secret or args.secret:
+        account.secret = random_string(20)
+        prt("Secret: {}".format(account.secret))
+
+    if not account.encrypt_password or args.password:
+        account.encrypt_password(getpass().strip())
 
     account.url = None
 
@@ -210,7 +218,7 @@ def list_users(args, l, rc):
     from ambry.util import drop_empty
     from tabulate import tabulate
 
-    headers = 'Id User Type'.split()
+    headers = 'Id User Type Secret'.split()
 
     records = []
 
@@ -219,7 +227,11 @@ def list_users(args, l, rc):
         acct = l.account(k)
 
         if acct.major_type == 'user':
-            records.append([acct.account_id, acct.user_id, acct.minor_type])
+            try:
+                secret = acct.secret
+            except:
+                secret = "<corrupt secret>"
+            records.append([acct.account_id, acct.user_id, acct.minor_type, secret])
 
     if not records:
         return

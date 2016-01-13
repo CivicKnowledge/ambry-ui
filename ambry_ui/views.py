@@ -265,8 +265,10 @@ def stream_file(pvid,ct):
         abort(404)
 
     if p.bundle.metadata.about.access != 'public' and not current_user.is_authenticated:
-        abort(403)
-
+        from api import jwt_auth
+        r = jwt_auth()
+        if r != 0:
+            abort(r)
 
     if ct == 'csv':
         return stream_csv(pvid)
