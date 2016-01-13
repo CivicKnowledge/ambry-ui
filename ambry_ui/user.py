@@ -109,6 +109,10 @@ def login():
 
         user = load_user(username)
 
+        if not user:
+            app.logger.info("No user '{}'".format(username))
+            return abort(403)
+
         user.validate(password)
 
         login_user(user)
