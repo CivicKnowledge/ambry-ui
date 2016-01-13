@@ -51,6 +51,10 @@ def make_parser(cmd):
     usp = ucmd.add_parser('list', help='List users')
     usp.set_defaults(subcommand=list_users)
 
+    sp = cmd.add_parser('init', help='Initialize some library database values for the ui')
+    sp.set_defaults(command=command_name)
+    sp.set_defaults(subcommand=db_init)
+
 def run_command(args, rc):
     from ambry.library import new_library
     from ambry.cli import global_logger
@@ -141,6 +145,8 @@ def start_ui(args, l, rc):
         prt('    ambry remotes add -j {} -u {} {}'.format(remote.jwt_secret,remote.url, remote.short_name))
         prt('    ambry accounts add -v api -s {} {}'.format(secret, account_url))
 
+    db_init(args,l,rc)
+
     try:
 
         app.config['SECRET_KEY'] = 'secret'  # To Ensure logins persist
@@ -148,6 +154,25 @@ def start_ui(args, l, rc):
         app.run(host=args.host, port=int(args.port), debug=args.debug)
     except socket.error as e:
         warn("Failed to start ui: {}".format(e))
+
+
+def db_init(args, l, rc):
+
+    from uuid import uuid4
+    import os
+
+    ui_config = l.ui_config
+
+    if not 'secret' in ui_config:
+        ui_config['secret'] = str(uuid4())
+
+    if not 'csrf_secret' in ui_config:
+        ui_config['csrf_secret'] = str(uuid4())
+
+    if not 'website_title' in ui_config:
+        ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', 'Civic Knowledge Data Search')
+
+    l.database.commit()
 
 
 def add_user(args, l, rc):

@@ -42,26 +42,9 @@ class AmbryAppContext(object):
         self.library = Library(rc, read_only=True, echo = False)
         self.renderer = Renderer(self.library)
 
-        #import logging
-        #path = self.library.filesystem.logs()
-        #logging.basicConfig(filename=path, level=logging.DEBUG)
-
-    def app_init(self, app):
-        """Initialize the database with configuration for the UI"""
         ui_config = self.library.ui_config
 
-        if not 'secret' in ui_config:
-            ui_config['secret'] = str(uuid4())
-
-        if not 'csrf_secret' in ui_config:
-            ui_config['csrf_secret'] = str(uuid4())
-
-        if not 'website_title' in ui_config:
-            ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', 'Civic Knowledge Data Search')
-
-        self.library.database.commit()
-
-        # FIXME Are both assignments necessary?
+        app.config['website_title'] = ui_config['website_title']
         app.secret_key = app.config['SECRET_KEY'] = ui_config['secret']
         app.config['WTF_CSRF_SECRET_KEY'] = ui_config['csrf_secret']
 
@@ -100,9 +83,7 @@ app = Flask(__name__)
 
 app.config.update(app_config)
 
-aac = AmbryAppContext()
-aac.app_init(app)
-aac.close()
+
 
 csrf = CsrfProtect()
 csrf.init_app(app)
