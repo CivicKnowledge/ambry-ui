@@ -35,8 +35,8 @@ def make_parser(cmd):
     usp = ucmd.add_parser('add', help='Add a user')
     usp.set_defaults(subcommand=add_user)
     usp.add_argument('-a', '--admin', action='store_true', default = False, help="Make the user an administrator")
-    usp.add_argument('-p', '--password', action='store_true', default=False, help="Reset the password")
-    usp.add_argument('-s', '--secret', action='store_true', default=False, help="Regenerate the API secret")
+    usp.add_argument('-p', '--password', help="Reset the password")
+    usp.add_argument('-s', '--secret',  help="Regenerate the API secret")
     usp.add_argument('user_name', help='Name of user')
 
     usp = ucmd.add_parser('admin', help='Add or remove admin privledges')
@@ -52,8 +52,10 @@ def make_parser(cmd):
     usp.set_defaults(subcommand=list_users)
 
     sp = cmd.add_parser('init', help='Initialize some library database values for the ui')
-    sp.set_defaults(command=command_name)
     sp.set_defaults(subcommand=db_init)
+
+    sp = cmd.add_parser('run_args', help='Print evalable environmental vars for running the UI')
+    sp.set_defaults(subcommand=run_args)
 
 def run_command(args, rc):
     from ambry.library import new_library
@@ -103,9 +105,6 @@ def start_ui(args, l, rc):
         remote = l.find_or_new_remote('localhost', service='ambry')
         remote.url = "http://{}:{}".format(args.host, args.port)
 
-        if not remote.jwt_secret:
-            from ambry.util import random_string
-            remote.jwt_secret = random_string(16)
 
         # Create a local user account entry for accessing the API. This one is for the client,
         # which knows the destination URL, so the account id has the form: http://api@localhost:8080/
@@ -138,12 +137,11 @@ def start_ui(args, l, rc):
 
         app.config['LOGGED_IN_USER'] = 'admin'
 
-        prt('JWT Secret  : {}'.format(app.config['JWT_SECRET']))
         prt('API Password: {}'.format(secret))
 
-        prt('Add Secret to a foreign library: ')
-        prt('    ambry remotes add -j {} -u {} {}'.format(remote.jwt_secret,remote.url, remote.short_name))
-        prt('    ambry accounts add -v api -s {} {}'.format(secret, account_url))
+        #prt('Add Secret to a foreign library: ')
+        #prt('    ambry remotes add -j {} -u {} {}'.format(remote.jwt_secret,remote.url, remote.short_name))
+        #prt('    ambry accounts add -v api -s {} {}'.format(secret, account_url))
 
     db_init(args,l,rc)
 
@@ -154,6 +152,16 @@ def start_ui(args, l, rc):
         app.run(host=args.host, port=int(args.port), debug=args.debug)
     except socket.error as e:
         warn("Failed to start ui: {}".format(e))
+
+
+def run_args(args, l, rc):
+
+    ui_config = l.ui_config
+
+    db_init(args, l, rc)
+
+    prt('AMBRY_UI_SECRET={} AMBRY_UI_CSRF_SECRET={} AMBRY_UI_TITLE="{}" '
+        .format(ui_config['secret'], ui_config['csrf_secret'], ui_config['website_title'] ))
 
 
 def db_init(args, l, rc):
@@ -170,10 +178,9 @@ def db_init(args, l, rc):
         ui_config['csrf_secret'] = str(uuid4())
 
     if not 'website_title' in ui_config:
-        ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', 'Civic Knowledge Data Search')
+        ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', 'AMbry Data Library')
 
     l.database.commit()
-
 
 def add_user(args, l, rc):
     """Add or update a user"""
@@ -194,8 +201,16 @@ def add_user(args, l, rc):
         account.secret = random_string(20)
         prt("Secret: {}".format(account.secret))
 
-    if not account.encrypt_password or args.password:
-        account.encrypt_password(getpass().strip())
+    if args.password:
+        password = args.password
+    elif not account.encrypted_password:
+        password = getpass().strip()
+    else:
+        password = None
+
+    if password:
+        account.encrypt_password(password)
+        assert account.test(password)
 
     account.url = None
 
@@ -264,3 +279,5 @@ def list_users(args, l, rc):
     records = drop_empty([headers] + records)
 
     prt(tabulate(records[1:], records[0]))
+
+

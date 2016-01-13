@@ -1,4 +1,54 @@
 #!/usr/bin/env bash
 # Run the UI with gunicorn, using the default configuration
 
-exec gunicorn -w 4 --max-requests 10 -b 0.0.0.0:8080 ambry_ui:app
+OPTIND=1         # Reset in case getopts has been used previously in the shell.
+
+usage()
+{
+cat << EOF
+usage: $0 options
+
+Run the ambry ui using gunicorn
+
+OPTIONS:
+   -h      Show this message
+   -H      Hostname, defaults to 0.0.0.0, all IP addresses
+   -p      Port, defaults to 80
+   -w      Number of workers, defaults to 4
+
+EOF
+}
+
+HOST=0.0.0.0
+PORT=80
+WORKERS=4
+while getopts "H:p:w:" OPTION
+do
+     case $OPTION in
+         h)
+             usage
+             exit 1
+             ;;
+         H)
+             HOST=$OPTARG
+             ;;
+         p)
+             PORT=$OPTARG
+             ;;
+         w)
+             workers=$OPTARG
+             ;;
+
+
+         ?)
+             usage
+             exit
+             ;;
+     esac
+done
+
+shift $((OPTIND-1))
+
+eval $(ambry ui run_args)
+
+exec gunicorn -w $WORKERS --max-requests 10 -b $HOST:$PORT ambry_ui:app
