@@ -15,8 +15,8 @@ import logging
 
 logger = app.logger
 
-logger = logging.getLogger('gunicorn.access')
-logger.setLevel(logging.DEBUG)
+#logger = logging.getLogger('gunicorn.access')
+#logger.setLevel(logging.DEBUG)
 
 
 @app.login_manager.user_loader

@@ -92,6 +92,44 @@ def test_get():
 # Administration Interfaces
 #
 
+@app.route('/resolve/<ref>', methods = ['GET'])
+def resolve_get(ref):
+    """Return remotes configured on the Library"""
+    from ambry.orm.exc import NotFoundError
+
+    r = aac.renderer
+    d = None
+
+    try:
+        p = r.library.partition(ref)
+        d = p.dict
+        d['_type'] = 'partition'
+        d['description'] = p.description
+        d['geo_description'] = p.geo_description
+
+        b = p._bundle.dataset.dict
+        b['title'] = p._bundle.metadata.about.title
+        b['summary'] = p._bundle.metadata.about.summary
+        return r.json(partition=d, bundle=b)
+
+    except NotFoundError:
+        pass
+
+    try:
+        b = r.library.bundle(ref)
+        d = b.dataset.dict
+        d['_type'] = 'bundle'
+        d['title'] = b.metadata.about.title
+        d['summary'] = b.metadata.about.summary
+
+        return r.json(
+            bundle=d
+        )
+    except:
+        return abort(404)
+
+
+
 @app.route('/config/remotes', methods = ['GET'])
 @jwt_required
 def config_remotes_get():
