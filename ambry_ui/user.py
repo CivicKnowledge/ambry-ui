@@ -4,10 +4,9 @@ Copyright (c) 2015 Civic Knowledge. This file is licensed under the terms of
 the Revised BSD License, included in this distribution as LICENSE.txt
 """
 
-from . import app, csrf, get_aac
+from . import app, get_aac
 from werkzeug.local import LocalProxy
 from flask import session,  request, flash, redirect, abort, url_for
-from . import login_manager
 from flask_login import login_user, logout_user
 
 aac = LocalProxy(get_aac)
@@ -20,7 +19,7 @@ logger = logging.getLogger('gunicorn.access')
 logger.setLevel(logging.DEBUG)
 
 
-@login_manager.user_loader
+@app.login_manager.user_loader
 def load_user(user_id):
     from ambry.orm.exc import NotFoundError
 
@@ -38,7 +37,7 @@ def load_user(user_id):
 
 # This can be implemented to allow logins from URL values, or an Auth header, such as by transfers from
 # another application
-@login_manager.request_loader
+@app.login_manager.request_loader
 def load_user_from_request(request):
 
     # first, try to login using the api_key url arg
@@ -79,7 +78,7 @@ class User(object):
     def get_id(self):
         return self._account_rec.account_id
 
-@csrf.error_handler
+@app.csrf.error_handler
 def csrf_error(reason):
     logger.info("Got a CSRF error: {}".format(reason))
     return redirect('/')
@@ -97,7 +96,7 @@ def login():
 
     form = LoginForm()
 
-    csrf.protect()
+    app.csrf.protect()
 
     if request.form['login'] == 'Cancel':
         return redirect(request.args.get('next_page', '/'))
@@ -108,9 +107,6 @@ def login():
     password = request.form.get('password')
 
     logger.info("login for '{}'".format(username))
-
-    print session['csrf_token']
-    print request.form['csrf_token']
 
     error = None
     if form.validate_on_submit():

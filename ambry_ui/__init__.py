@@ -49,7 +49,6 @@ class AmbryAppContext(object):
     def render(self, template, *args, **kwargs):
         return self.renderer.render(template, *args, **kwargs)
 
-
     def bundle(self, ref):
         from flask import abort
         from ambry.orm.exc import NotFoundError
@@ -58,7 +57,6 @@ class AmbryAppContext(object):
             return self.library.bundle(ref)
         except NotFoundError:
             abort(404)
-
 
     def json(self,*args, **kwargs):
         return self.renderer.json(*args, **kwargs)
@@ -75,28 +73,43 @@ def get_aac(): # Ambry Application Context
 
     return g.aac
 
+class Application(Flask):
+    def __init__(self, app_config, import_name, static_path=None, static_url_path=None, static_folder='static',
+                 template_folder='templates', instance_path=None, instance_relative_config=False):
 
-app = Flask(__name__)
+        self._app_config = app_config
+        self._initialized = False
+        self.csrf = CsrfProtect()
+        self.login_manager = LoginManager()
 
-if not app_config['SECRET_KEY']:
-    app.logger.error("SECRET_KEY was not set. Setting to an insecure value")
-    app_config['SECRET_KEY'] = 'secret'
+        super(Application, self).__init__(import_name, static_path, static_url_path, static_folder, template_folder,
+                                          instance_path, instance_relative_config)
 
-if not app_config['WTF_CSRF_SECRET_KEY']:
-    app_config['WTF_CSRF_SECRET_KEY'] = app_config['SECRET_KEY']
+    def __call__(self, environ, start_response):
 
-app.config.update(app_config)
-app.secret_key = app.config['SECRET_KEY']
+        if not self._initialized:
+            if not app_config['SECRET_KEY']:
+                app.logger.error("SECRET_KEY was not set. Setting to an insecure value")
+                app_config['SECRET_KEY'] = 'secret' # Must be the same for all worker processes.
+
+            if not app_config['WTF_CSRF_SECRET_KEY']:
+                app_config['WTF_CSRF_SECRET_KEY'] = app_config['SECRET_KEY']
+
+            self.config.update(self._app_config)
+            self.secret_key = app.config['SECRET_KEY']
+
+            self.csrf.init_app(self)
+
+            self.session_interface = ItsdangerousSessionInterface()
+
+            self.login_manager.init_app(app)
+
+            self._initialized = True
+
+        return super(Application, self).__call__(environ, start_response)
 
 
-csrf = CsrfProtect()
-csrf.init_app(app)
-
-app.session_interface = ItsdangerousSessionInterface()
-
-login_manager = LoginManager()
-login_manager.init_app(app)
-
+app = Application(app_config, __name__)
 
 @app.teardown_appcontext
 def close_connection(exception):

@@ -165,7 +165,7 @@ def run_args(args, l, rc):
 
     db_init(args, l, rc)
 
-    prt('AMBRY_UI_SECRET={} AMBRY_UI_CSRF_SECRET={} AMBRY_UI_TITLE="{}" '
+    prt('export AMBRY_UI_SECRET={} AMBRY_UI_CSRF_SECRET={} AMBRY_UI_TITLE="{}" '
         .format(ui_config['secret'], ui_config['csrf_secret'], ui_config['website_title'] ))
 
 
