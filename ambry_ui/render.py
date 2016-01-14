@@ -273,7 +273,8 @@ class Renderer(object):
         """Return common context values. These are primarily helper functions
         that can be used from the context. """
         from functools import wraps
-        from ambry._meta import __version__
+        from ambry._meta import __version__ as ambry_version
+        from __meta__ import  __version__ as ui_version
         from .forms import LoginForm
         from flask import request
 
@@ -287,7 +288,8 @@ class Renderer(object):
             return wrapper
 
         return {
-            'version': __version__,
+            'ambry_version': ambry_version,
+            'ui_version': ui_version,
             'url_for': url_for,
             'from_root': lambda x: x,
             'schema_path': schema_path,
@@ -299,6 +301,7 @@ class Renderer(object):
             'next_page': request.path, # Actually last page, for login redirect
             'session': session,
             'autologin_user': app.config['LOGGED_IN_USER']
+
         }
 
 

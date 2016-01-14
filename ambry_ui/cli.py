@@ -17,6 +17,9 @@ def make_parser(cmd):
 
     cmd = config_p.add_subparsers(title='UI commands', help='UI commands')
 
+    sp = cmd.add_parser('info', help='Print information about the UI')
+    sp.set_defaults(subcommand=ui_info)
+
     sp = cmd.add_parser('start', help='Run the web user interface')
     sp.set_defaults(command=command_name)
     sp.set_defaults(subcommand=start_ui)
@@ -190,6 +193,18 @@ def db_init(args, l, rc):
         ui_config['virtual_host'] = None
 
     l.database.commit()
+
+def ui_info(args, l, rc):
+    from tabulate import tabulate
+    from __meta__ import __version__
+
+    records = []
+    records.append(['version', __version__])
+    records.append(['title', l.ui_config['website_title']])
+    records.append(['vhost', l.ui_config['virtual_host']])
+
+    prt(tabulate(records))
+
 
 def add_user(args, l, rc):
     """Add or update a user"""
