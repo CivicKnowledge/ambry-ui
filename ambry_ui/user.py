@@ -12,6 +12,12 @@ from flask_login import login_user, logout_user
 
 aac = LocalProxy(get_aac)
 
+import logging
+
+logger = app.logger
+
+logger = logging.getLogger('gunicorn.access')
+logger.setLevel(logging.DEBUG)
 
 
 @login_manager.user_loader
@@ -21,11 +27,11 @@ def load_user(user_id):
     try:
         account = aac.library.account(user_id)
     except NotFoundError:
-        app.logger.info("User '{}' not found  ".format(user_id))
+        logger.info("User '{}' not found  ".format(user_id))
         return None
 
     if account.major_type != 'user':
-        app.logger.info("User '{}' not api service type; got '{}'  ".format(user_id, account.major_type))
+        logger.info("User '{}' not api service type; got '{}'  ".format(user_id, account.major_type))
         return None
 
     return User(account)
@@ -75,7 +81,7 @@ class User(object):
 
 @csrf.error_handler
 def csrf_error(reason):
-    app.logger.info("Got a CSRF error: {}".format(reason))
+    logger.info("Got a CSRF error: {}".format(reason))
     return redirect('/')
 
 
@@ -91,26 +97,30 @@ def login():
 
     form = LoginForm()
 
-    #csrf.protect()
+    csrf.protect()
 
     if request.form['login'] == 'Cancel':
         return redirect(request.args.get('next_page', '/'))
 
-
     session['request_count'] = session.get('request_count', 0) + 1
+
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    logger.info("login for '{}'".format(username))
+
+    print session['csrf_token']
+    print request.form['csrf_token']
 
     error = None
     if form.validate_on_submit():
 
         next = request.args.get('next_page', '/')
 
-        username = request.form.get('username')
-        password = request.form.get('password')
-
         user = load_user(username)
 
         if not user:
-            app.logger.info("No user '{}'".format(username))
+            logger.info("No user '{}'".format(username))
             return abort(403)
 
         user.validate(password)
@@ -122,6 +132,8 @@ def login():
 
         return redirect(next)
     else:
+        logger.info("Login form failed to validate: {}".format(form.errors))
+        logger.info(request.form)
         error = 'Invalid username or password'
 
     return aac.renderer.render('login.html', error=error, request_count= session['request_count'], **cxt)

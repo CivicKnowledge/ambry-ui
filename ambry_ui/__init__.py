@@ -21,14 +21,14 @@ app_config = {
     'host': os.getenv('AMBRY_UI_HOST', 'localhost'),
     'port': os.getenv('AMBRY_UI_PORT', 8081),
     'use_proxy': bool(os.getenv('AMBRY_UI_USE_PROXY', False)),
-    'debug': bool(os.getenv('AMBRY_UI_DEBUG', False)),
+    'DEBUG': bool(os.getenv('AMBRY_UI_DEBUG', False)),
 
     'MAX_CONTENT_LENGTH': 1024*1024*512,
     'SESSION_TYPE': 'filesystem',
     'WTF_CSRF_CHECK_DEFAULT': False,  # Turn off CSRF by default. Must enable on specific views.
 
-    'SECRET_KEY': os.getenv('AMBRY_UI_SECRET', str(uuid4())),
-    'WTF_CSRF_SECRET_KEY': os.getenv('AMBRY_UI_CSRF_SECRET', str(uuid4())),
+    'SECRET_KEY': os.getenv('AMBRY_UI_SECRET'),
+    'WTF_CSRF_SECRET_KEY': os.getenv('AMBRY_UI_CSRF_SECRET', os.getenv('AMBRY_UI_SECRET')),
     'website_title': os.getenv('AMBRY_UI_TITLE', "Ambry Data Library"),
 
     'LOGGED_IN_USER': None, # Name of user to auto-login
@@ -78,8 +78,16 @@ def get_aac(): # Ambry Application Context
 
 app = Flask(__name__)
 
+if not app_config['SECRET_KEY']:
+    app.logger.error("SECRET_KEY was not set. Setting to an insecure value")
+    app_config['SECRET_KEY'] = 'secret'
+
+if not app_config['WTF_CSRF_SECRET_KEY']:
+    app_config['WTF_CSRF_SECRET_KEY'] = app_config['SECRET_KEY']
+
 app.config.update(app_config)
 app.secret_key = app.config['SECRET_KEY']
+
 
 csrf = CsrfProtect()
 csrf.init_app(app)
@@ -88,6 +96,7 @@ app.session_interface = ItsdangerousSessionInterface()
 
 login_manager = LoginManager()
 login_manager.init_app(app)
+
 
 @app.teardown_appcontext
 def close_connection(exception):

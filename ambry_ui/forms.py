@@ -12,5 +12,12 @@ from wtforms import BooleanField, TextField, PasswordField, validators
 
 
 class LoginForm(Form):
-    username = StringField('Username', [validators.Length(min=4, max=25)])
+    username = StringField('Username', [validators.Length(min=3, max=25)])
     password = PasswordField('New Password', [validators.DataRequired()])
+
+    def validate_csrf_token(self, field):
+        print '!!!', field
+        return super(LoginForm, self).validate_csrf_token(field)
+
+
+
