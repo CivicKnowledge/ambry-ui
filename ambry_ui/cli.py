@@ -36,7 +36,7 @@ def make_parser(cmd):
     usp.set_defaults(subcommand=add_user)
     usp.add_argument('-a', '--admin', action='store_true', default = False, help="Make the user an administrator")
     usp.add_argument('-p', '--password', help="Reset the password")
-    usp.add_argument('-s', '--secret',  help="Regenerate the API secret")
+    usp.add_argument('-s', '--secret', action='store_true', default=False, help="Regenerate the API secret")
     usp.add_argument('user_name', help='Name of user')
 
     usp = ucmd.add_parser('admin', help='Add or remove admin privledges')
@@ -179,12 +179,12 @@ def db_init(args, l, rc):
     if not 'csrf_secret' in ui_config:
         ui_config['csrf_secret'] = str(uuid4())
 
-    if args.title:
+    if hasattr(args, 'title') and args.title:
         ui_config['website_title'] = args.title
     elif not 'website_title' in ui_config:
         ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', args.title or 'Ambry Data Library')
 
-    if args.virt_host:
+    if hasattr(args, 'virt_host') and args.virt_host:
         ui_config['virtual_host'] = args.virt_host
     elif not ui_config['virtual_host']:
         ui_config['virtual_host'] = None
