@@ -20,6 +20,8 @@ app.logger.setLevel(logging.INFO)
 def jwt_auth():
     """Extract the Authorization header and validate it against the database"""
     from jose import jwt
+    from jose.exceptions import JWSError
+
     from flask import request
     from ambry.orm.exc import NotFoundError
 
@@ -52,7 +54,7 @@ def jwt_auth():
     except jwt.JWTError:
         app.logger.info("AuthError: failed to verify token ")
         abort(401)
-    except jwt.exceptions.JWSError:
+    except JWSError:
         app.logger.info("AuthError: failed to verify token signature ")
         abort(401)
 
