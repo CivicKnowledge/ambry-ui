@@ -52,7 +52,7 @@ def jwt_auth():
     except jwt.JWTError:
         app.logger.info("AuthError: failed to verify token ")
         abort(401)
-    except jwt.JWSError:
+    except jwt.exceptions.JWSError:
         app.logger.info("AuthError: failed to verify token signature ")
         abort(401)
 
