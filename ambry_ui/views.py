@@ -262,20 +262,23 @@ def stream_file(pvid,ct):
     try:
         p = r.library.partition(pvid)
     except NotFoundError:
-        abort(404)
+        return abort(404)
 
     if p.bundle.metadata.about.access != 'public' and not current_user.is_authenticated:
         from api import jwt_auth
         r = jwt_auth()
         if r != 0:
-            abort(r)
+            return abort(r)
 
-    if ct == 'csv':
-        return stream_csv(pvid)
-    elif ct == 'mpack':
-        return stream_mpack(pvid)
-    else:
-        abort(404)
+    try:
+        if ct == 'csv':
+            return stream_csv(pvid)
+        elif ct == 'mpack':
+            return stream_mpack(pvid)
+    except NotFoundError:
+        pass
+
+    return abort(404)
 
 def stream_csv(pvid):
     from flask import Response

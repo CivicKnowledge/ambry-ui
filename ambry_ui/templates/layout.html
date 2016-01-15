@@ -54,10 +54,12 @@
                 <footer class="col-md-12 footer">
                       <div class="pull-left">
                           {% block footer %}
-                        Ambry {{ ambry_version }} UI {{  ui_version }} ©2015 Civic Knowledge, data for social development.{% endblock %}
+                        Ambry {{ ambry_version }} UI {{  ui_version }} ©2015 Civic Knowledge, data for social
+                              development.{% endblock %}
+                      {% block json_button %}{% endblock %}
                       </div>
                       <div class="pull-right">
-                        {% block json_button %} {% endblock %}
+
                       </div>
 
                 </footer>
