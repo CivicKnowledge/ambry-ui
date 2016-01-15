@@ -185,7 +185,7 @@ def db_init(args, l, rc):
     if hasattr(args, 'title') and args.title:
         ui_config['website_title'] = args.title
     elif not 'website_title' in ui_config:
-        ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', args.title or 'Ambry Data Library')
+        ui_config['website_title'] = os.getenv('AMBRY_UI_TITLE', 'Ambry Data Library')
 
     if hasattr(args, 'virt_host') and args.virt_host:
         ui_config['virtual_host'] = args.virt_host
