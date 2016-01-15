@@ -52,6 +52,9 @@ def jwt_auth():
     except jwt.JWTError:
         app.logger.info("AuthError: failed to verify token ")
         abort(401)
+    except jwt.JWSError:
+        app.logger.info("AuthError: failed to verify token signature ")
+        abort(401)
 
     if not 'u' in claims:
         app.logger.info("AuthError: no user in claims ")
