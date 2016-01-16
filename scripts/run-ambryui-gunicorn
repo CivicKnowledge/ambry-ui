@@ -51,4 +51,4 @@ shift $((OPTIND-1))
 
 eval $(ambry ui run_args)
 
-exec gunicorn -w $WORKERS --max-requests 10 --timeout 120 -b $HOST:$PORT --access-logfile - --error-logfile - ambry_ui:app
+exec gunicorn -w $WORKERS --max-requests 10 --timeout 300 -b $HOST:$PORT --access-logfile - --error-logfile - ambry_ui:app
