@@ -62,6 +62,10 @@ def make_parser(cmd):
     sp = cmd.add_parser('run_args', help='Print evalable environmental vars for running the UI')
     sp.set_defaults(subcommand=run_args)
 
+    sp = cmd.add_parser('notebook', help='Run jupyter notebook')
+    sp.set_defaults(subcommand=start_notebook)
+
+
 def run_command(args, rc):
     from ambry.library import new_library
     from ambry.cli import global_logger
@@ -305,3 +309,16 @@ def list_users(args, l, rc):
     prt(tabulate(records[1:], records[0]))
 
 
+def start_notebook(args, l, rc):
+
+    from notebook.notebookapp import NotebookApp
+    from traitlets.config import Config
+    import sys
+    #c = Config()
+
+    sys.argv = ['ambry']
+    app = NotebookApp.instance()
+    app._library = l
+    app.contents_manager_class = 'ambry_ui.jupyter.FileContentsManager'
+    app.initialize(None)
+    app.start()
