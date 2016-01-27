@@ -148,10 +148,6 @@ def start_ui(args, l, rc):
 
         prt('API Password: {}'.format(secret))
 
-        #prt('Add Secret to a foreign library: ')
-        #prt('    ambry remotes add -j {} -u {} {}'.format(remote.jwt_secret,remote.url, remote.short_name))
-        #prt('    ambry accounts add -v api -s {} {}'.format(secret, account_url))
-
     db_init(args,l,rc)
 
     try:
@@ -312,13 +308,11 @@ def list_users(args, l, rc):
 def start_notebook(args, l, rc):
 
     from notebook.notebookapp import NotebookApp
-    from traitlets.config import Config
     import sys
-    #c = Config()
 
     sys.argv = ['ambry']
     app = NotebookApp.instance()
     app._library = l
-    app.contents_manager_class = 'ambry_ui.jupyter.FileContentsManager'
+    app.contents_manager_class = 'ambry_ui.jupyter.AmbryContentsManager'
     app.initialize(None)
     app.start()

@@ -3,3 +3,4 @@ include README.rst
 include LICENSE
 recursive-include ambry_ui/static *
 recursive-include ambry_ui/templates *
+recursive-include ambry_ui/support *

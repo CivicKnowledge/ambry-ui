@@ -12,9 +12,9 @@ import nbformat
 
 from tornado import web
 
-from notebook.services.contents.filecheckpoints import FileCheckpoints
-from notebook.services.contents.fileio import FileManagerMixin
+
 from notebook.services.contents.manager import ContentsManager
+from notebook.services.contents.checkpoints import Checkpoints, GenericCheckpointsMixin
 
 from ipython_genutils.importstring import import_item
 from traitlets import Any, Unicode, Bool, TraitError
@@ -28,32 +28,33 @@ from notebook.utils import (
 _script_exporter = None
 
 
-def _post_save_script(model, os_path, contents_manager, **kwargs):
-    """convert notebooks to Python script after save with nbconvert
+class AmbryCheckpoints(Checkpoints, GenericCheckpointsMixin):
 
-    replaces `ipython notebook --script`
-    """
-    from nbconvert.exporters.script import ScriptExporter
+    def restore_checkpoint(self, contents_mgr, checkpoint_id, path):
+        pass
 
-    if model['type'] != 'notebook':
-        return
+    def rename_checkpoint(self, checkpoint_id, old_path, new_path):
+        pass
 
-    global _script_exporter
-    if _script_exporter is None:
-        _script_exporter = ScriptExporter(parent=contents_manager)
-    log = contents_manager.log
+    def list_checkpoints(self, path):
+        pass
 
-    base, ext = os.path.splitext(os_path)
-    script, resources = _script_exporter.from_filename(os_path)
-    script_fname = base + resources.get('output_extension', '.txt')
-    log.info("Saving script /%s", to_api_path(script_fname, contents_manager.root_dir))
-    with io.open(script_fname, 'w', encoding='utf-8') as f:
-        f.write(script)
+    def delete_checkpoint(self, checkpoint_id, path):
+        pass
 
-class FileContentsManager(FileManagerMixin, ContentsManager):
+    def create_checkpoint(self, contents_mgr, path):
+        from datetime import datetime
+
+        return dict(
+            id='0',
+            last_modified=datetime.now(),
+        )
+
+
+class AmbryContentsManager(ContentsManager):
 
     def __init__(self, *args, **kwargs):
-        super(FileContentsManager, self).__init__(*args, **kwargs)
+        super(AmbryContentsManager, self).__init__(*args, **kwargs)
 
         self._library = self.parent._library
 
@@ -80,7 +81,7 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
         which behaves similarly to `--script`.
         """)
 
-        self.post_save_hook = _post_save_script
+        pass
 
     post_save_hook = Any(None, config=True,
         help="""Python callable or importstring thereof
@@ -125,25 +126,7 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
             raise TraitError("%r is not a directory" % new)
 
     def _checkpoints_class_default(self):
-        return FileCheckpoints
-
-    def is_hidden(self, path):
-        """Does the API style path correspond to a hidden directory or file?
-
-        Parameters
-        ----------
-        path : string
-            The path to check. This is an API path (`/` separated,
-            relative to root_dir).
-
-        Returns
-        -------
-        hidden : bool
-            Whether the path exists and is hidden.
-        """
-        path = path.strip('/')
-        os_path = self._get_os_path(path=path)
-        return is_hidden(os_path, self.root_dir)
+        return AmbryCheckpoints
 
     def file_exists(self, path):
         """Returns True if the file exists, else returns False.
@@ -160,29 +143,86 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
         exists : bool
             Whether the file exists.
         """
-        path = path.strip('/')
+        from ambry.orm.exc import NotFoundError
 
-        return True
+        path = path.strip('/')
+        parts = path.split('/')
+        cache_key = os.path.join(*parts[:2])
+        file_name = parts[-1]
+
+        print 'FILE EXISTS?', path
+
+        if path == '':
+            # Root
+            return False # Isn't a file
+
+        elif path.count('/') == 0:
+
+            return False # Isn't a file
+
+        elif path.count('/') == 1:
+
+            return False # Isn't a file
+
+        elif path.count('/') == 2:
+
+
+            print '!!!!', path, parts, cache_key, file_name
+
+            b = self._library.bundle_by_cache_key(cache_key)
+
+            try:
+                bs = b.dataset.bsfile(file_name)
+                return True
+            except NotFoundError:
+                return False
+
+        else:
+
+            return False
+
+    def is_hidden(self, path):
+
+        return False # We have nothing to hide
 
     def dir_exists(self, path):
-        """Does the API-style path refer to an extant directory?
-
-        API-style wrapper for os.path.isdir
-
-        Parameters
-        ----------
-        path : string
-            The path to check. This is an API path (`/` separated,
-            relative to root_dir).
-
-        Returns
-        -------
-        exists : bool
-            Whether the path is indeed a directory.
-        """
         path = path.strip('/')
 
-        return True
+        print 'DIR EXISTS?', path
+
+        if path == '':
+            # Root
+            return True # It always exists
+
+        elif path.count('/') == 0:
+            # Source
+            return True  # HACK, just assume it does exist
+
+        elif path.count('/') == 1:
+            # Bundle
+            return True # Isn't a file
+
+        elif path.count('/') == 2:
+
+            return False # A bundle file, isn't a directory
+
+    def _get_os_path(self, path):
+        """Return a filesystem path in the build directory. SHould only be used fro checkpoints,
+        since notebooks go in the database.
+        """
+        from ambry.dbexceptions import ConfigurationError
+
+        cp_path = self._library.filesystem.compose('build',path)
+
+        cp_dir = os.path.dirname(cp_path)
+
+
+        try:
+            root = self._library.filesystem.build()
+        except ConfigurationError as e:
+            raise web.HTTPError(404, e.message)
+
+        return cp_path
 
     def exists(self, path):
         """Returns True if the path exists, else returns False.
@@ -205,70 +245,18 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
 
     def _base_model(self, path):
         """Build the common base of a contents model"""
-        os_path = self._get_os_path(path)
-        info = os.stat(os_path)
-        last_modified = tz.utcfromtimestamp(info.st_mtime)
-        created = tz.utcfromtimestamp(info.st_ctime)
+        from datetime import datetime
         # Create the base model.
-        model = {}
-        model['name'] = path.rsplit('/', 1)[-1]
-        model['path'] = path
-        model['last_modified'] = last_modified
-        model['created'] = created
-        model['content'] = None
-        model['format'] = None
-        model['mimetype'] = None
-        try:
-            model['writable'] = os.access(os_path, os.W_OK)
-        except OSError:
-            self.log.error("Failed to check write permissions on %s", os_path)
-            model['writable'] = False
-        return model
-
-    def _dir_model(self, path, content=True):
-        """Build a model for a directory
-
-        if content is requested, will include a listing of the directory
-        """
-        os_path = self._get_os_path(path)
-
-        four_o_four = u'directory does not exist: %r' % path
-
-        if not os.path.isdir(os_path):
-            raise web.HTTPError(404, four_o_four)
-        elif is_hidden(os_path, self.root_dir):
-            self.log.info("Refusing to serve hidden directory %r, via 404 Error",
-                os_path
-            )
-            raise web.HTTPError(404, four_o_four)
-
-        model = self._base_model(path)
-
-        model['type'] = 'directory'
-        if content:
-            model['content'] = contents = []
-            os_dir = self._get_os_path(path)
-            for name in os.listdir(os_dir):
-                try:
-                    os_path = os.path.join(os_dir, name)
-                except UnicodeDecodeError as e:
-                    self.log.warn(
-                        "failed to decode filename '%s': %s", name, e)
-                    continue
-                # skip over broken symlinks in listing
-                if not os.path.exists(os_path):
-                    self.log.warn("%s doesn't exist", os_path)
-                    continue
-                elif not os.path.isfile(os_path) and not os.path.isdir(os_path):
-                    self.log.debug("%s not a regular file", os_path)
-                    continue
-                if self.should_list(name) and not is_hidden(os_path, self.root_dir):
-                    contents.append(self.get(path='%s/%s' % (path, name),content=False))
-
-            model['format'] = 'json'
+        model = {'name': path.rsplit('/', 1)[-1],
+                 'path': path,
+                 'last_modified': datetime.now(),
+                 'created': datetime.now(),
+                 'content': None,
+                 'format': None,
+                 'mimetype': None,
+                 'writable': False}
 
         return model
-
 
     def _root_model(self):
 
@@ -430,8 +418,8 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
                  'type': 'notebook',
                  'format': None,
                  'mimetype': None,
-                 'last_modified': f.record.modified_datetime,
-                 'created': f.record.modified_datetime,
+                 'last_modified': f.record.modified_datetime or datetime.now(),
+                 'created': f.record.modified_datetime or datetime.now(),
                  'writable': True,
                  'content': None
                  }
@@ -503,6 +491,7 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
 
     def _save_directory(self, os_path, model, path=''):
         """create a directory"""
+        raise NotImplementedError()
         if is_hidden(os_path, self.root_dir):
             raise web.HTTPError(400, u'Cannot create hidden directory %r' % os_path)
         if not os.path.exists(os_path):
@@ -526,6 +515,8 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
 
         self.run_pre_save_hook(model=model, path=f.record.id)
 
+        f.setcontent(f.default)
+
         try:
             if model['type'] == 'notebook':
 
@@ -533,8 +524,9 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
                 self.check_and_sign(nb, path)
 
                 # One checkpoint should always exist for notebooks.
-                if not self.checkpoints.list_checkpoints(path):
-                    self.create_checkpoint(path)
+
+                #if not self.checkpoints.list_checkpoints(path):
+                #    self.create_checkpoint(path)
 
             elif model['type'] == 'file':
                 pass
@@ -561,10 +553,13 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
 
         self.run_post_save_hook(model=model, os_path=f.record.id)
 
+        self._library.commit()
+
         return model
 
     def delete_file(self, path):
         """Delete file at path."""
+        raise NotImplementedError()
         path = path.strip('/')
         os_path = self._get_os_path(path)
         rm = os.unlink
@@ -591,6 +586,9 @@ class FileContentsManager(FileManagerMixin, ContentsManager):
 
     def rename_file(self, old_path, new_path):
         """Rename a file."""
+
+        raise NotImplementedError()
+
         old_path = old_path.strip('/')
         new_path = new_path.strip('/')
         if new_path == old_path:
