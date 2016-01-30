@@ -1,0 +1,28 @@
+{% extends "bundle-parts/layout.html" %}
+{% from 'bundle-parts/tabs.html' import tabs %}
+{% block head %}
+    {{ super() }}
+    <link href="/css/ipython.css" rel="stylesheet">
+{% endblock %}
+{% block body %}
+
+    {{tabs('notebooks',vid, current_user)}}
+
+    <ul class="list-inline">
+        {%  for notebook in notebooks %}
+        <li>
+            <a href="{{ url_for('bundle_notebook', vid=vid, fileid=notebook.record.id, ct='html')}}">
+                {{notebook.file_name}}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    {{ notebook_html|safe }}
+
+
+
+
+{% endblock %}
+
+

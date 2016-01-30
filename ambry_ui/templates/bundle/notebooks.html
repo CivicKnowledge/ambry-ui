@@ -1,0 +1,32 @@
+{% extends "bundle-parts/layout.html" %}
+{% from 'bundle-parts/tabs.html' import tabs %}
+{% block page_css %}
+    #partition-list th:first-child{
+        width: 10em;
+    }
+    td.col-name {
+        min-width: 25em;
+    }
+    td.table-name {
+        width: 10em;
+    }
+{%  endblock %}
+{% block body %}
+
+    {{tabs('notebooks',vid, current_user)}}
+
+    <h2>Notebooks</h2>
+    <ul >
+        {%  for notebook in notebooks %}
+        <li>
+            <a href="{{ url_for('bundle_notebook', vid=vid, fileid=notebook.record.id, ct='html')}}">
+                {{notebook.file_name}}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+
+
+{% endblock %}
+
+

@@ -167,6 +167,7 @@ def bundle_file(vid,name):
     """Return a file from the bundle"""
     from cStringIO import StringIO
     from ambry.orm.file import File
+    from contextlib import closing
 
     m = { v:k for k,v in File.path_map.items()}
 
@@ -178,9 +179,66 @@ def bundle_file(vid,name):
 
     bs.record_to_fh(sio)
 
-    return send_file(StringIO(sio.getvalue()))
+    with closing(sio):
+        return send_file(StringIO(sio.getvalue()))
 
-    sio.close()
+
+@app.route('/bundles/<vid>/notebooks.<ct>')
+def bundle_notebooks(vid, ct):
+    """Return a file from the bundle"""
+    from ambry.orm.file import File
+
+    r = aac.renderer.cts(ct)
+    b = r.library.bundle(vid)
+
+    cxt = dict(
+        vid=vid,
+        b=b,
+        notebooks=b.build_source_files.list_records(File.BSFILE.NOTEBOOK),
+        **r.cc()
+
+    )
+
+    return r.render('bundle/notebooks.html', **cxt)
+
+
+@app.route('/bundles/<vid>/notebooks/<fileid>.<ct>')
+def bundle_notebook(vid, fileid, ct):
+    """Return a file from the bundle"""
+    from ambry.orm.file import File
+    import nbformat
+    from traitlets.config import Config
+    from nbconvert import HTMLExporter
+
+    r = aac.renderer.cts(ct)
+    b = r.library.bundle(vid)
+
+    nbfile = b.build_source_files.file_by_id(fileid)
+
+    notebook = nbformat.reads(nbfile.unpacked_contents, as_version=4)
+
+    html_exporter = HTMLExporter()
+    html_exporter.template_file = 'basic'
+
+    (body, resources) = html_exporter.from_notebook_node(notebook)
+
+    cxt = dict(
+        vid=vid,
+        b=b,
+        fileid=fileid,
+        nbfile=nbfile,
+        notebooks=b.build_source_files.list_records(File.BSFILE.NOTEBOOK),
+        notebook=notebook,
+        notebook_html = body,
+
+        **r.cc()
+
+    )
+
+
+    return r.render('bundle/notebook.html', **cxt)
+
+
 
 @app.route('/search/bundle')
 def bundle_search():

@@ -28,6 +28,7 @@ from notebook.utils import (
 _script_exporter = None
 
 
+# FIXME. Should actually implement checkpoints
 class AmbryCheckpoints(Checkpoints, GenericCheckpointsMixin):
 
     def restore_checkpoint(self, contents_mgr, checkpoint_id, path):
@@ -37,7 +38,7 @@ class AmbryCheckpoints(Checkpoints, GenericCheckpointsMixin):
         pass
 
     def list_checkpoints(self, path):
-        pass
+        return []
 
     def delete_checkpoint(self, checkpoint_id, path):
         pass
@@ -56,7 +57,14 @@ class AmbryContentsManager(ContentsManager):
     def __init__(self, *args, **kwargs):
         super(AmbryContentsManager, self).__init__(*args, **kwargs)
 
-        self._library = self.parent._library
+        self._library_args = self.parent._library.ctor_args
+
+
+    @property
+    def library_context(self):
+
+        from ambry.library import LibraryContext
+        return LibraryContext(self._library_args)
 
     root_dir = Unicode(config=True)
 
@@ -150,8 +158,6 @@ class AmbryContentsManager(ContentsManager):
         cache_key = os.path.join(*parts[:2])
         file_name = parts[-1]
 
-        print 'FILE EXISTS?', path
-
         if path == '':
             # Root
             return False # Isn't a file
@@ -166,16 +172,15 @@ class AmbryContentsManager(ContentsManager):
 
         elif path.count('/') == 2:
 
+            with self.library_context as l:
 
-            print '!!!!', path, parts, cache_key, file_name
+                b = l.bundle_by_cache_key(cache_key)
 
-            b = self._library.bundle_by_cache_key(cache_key)
-
-            try:
-                bs = b.dataset.bsfile(file_name)
-                return True
-            except NotFoundError:
-                return False
+                try:
+                    bs = b.dataset.bsfile(file_name)
+                    return True
+                except NotFoundError:
+                    return False
 
         else:
 
@@ -187,8 +192,6 @@ class AmbryContentsManager(ContentsManager):
 
     def dir_exists(self, path):
         path = path.strip('/')
-
-        print 'DIR EXISTS?', path
 
         if path == '':
             # Root
@@ -206,57 +209,6 @@ class AmbryContentsManager(ContentsManager):
 
             return False # A bundle file, isn't a directory
 
-    def _get_os_path(self, path):
-        """Return a filesystem path in the build directory. SHould only be used fro checkpoints,
-        since notebooks go in the database.
-        """
-        from ambry.dbexceptions import ConfigurationError
-
-        cp_path = self._library.filesystem.compose('build',path)
-
-        cp_dir = os.path.dirname(cp_path)
-
-
-        try:
-            root = self._library.filesystem.build()
-        except ConfigurationError as e:
-            raise web.HTTPError(404, e.message)
-
-        return cp_path
-
-    def exists(self, path):
-        """Returns True if the path exists, else returns False.
-
-        API-style wrapper for os.path.exists
-
-        Parameters
-        ----------
-        path : string
-            The API path to the file (with '/' as separator)
-
-        Returns
-        -------
-        exists : bool
-            Whether the target exists.
-        """
-        path = path.strip('/')
-        os_path = self._get_os_path(path=path)
-        return os.path.exists(os_path)
-
-    def _base_model(self, path):
-        """Build the common base of a contents model"""
-        from datetime import datetime
-        # Create the base model.
-        model = {'name': path.rsplit('/', 1)[-1],
-                 'path': path,
-                 'last_modified': datetime.now(),
-                 'created': datetime.now(),
-                 'content': None,
-                 'format': None,
-                 'mimetype': None,
-                 'writable': False}
-
-        return model
 
     def _root_model(self):
 
@@ -273,16 +225,17 @@ class AmbryContentsManager(ContentsManager):
 
         content = {}
 
-        for b in self._library.bundles:
-            cm = {'name': b.identity.source,
-                  'path': b.identity.source,
-                  'type': 'directory',
-                  'format': None,
-                  'mimetype': None,
-                  'content': None,
-                  'writable': True}
+        with self.library_context as l:
+            for b in l.bundles:
+                cm = {'name': b.identity.source,
+                      'path': b.identity.source,
+                      'type': 'directory',
+                      'format': None,
+                      'mimetype': None,
+                      'content': None,
+                      'writable': True}
 
-            content[b.identity.source] = cm
+                content[b.identity.source] = cm
 
         model['content'] = sorted(content.values())
 
@@ -303,20 +256,21 @@ class AmbryContentsManager(ContentsManager):
 
         content = []
 
-        for b in self._library.bundles:
+        with self.library_context as l:
+            for b in l.bundles:
 
-            if b.identity.source == source:
-                source, name = b.identity.cache_key.split('/')
+                if b.identity.source == source:
+                    source, name = b.identity.cache_key.split('/')
 
-                cm = {'name': name,
-                      'path': b.identity.cache_key,
-                      'type': 'directory',
-                      'format': 'json',
-                      'mimetype': None,
-                      'content': None,
-                      'writable': False}
+                    cm = {'name': name,
+                          'path': b.identity.cache_key,
+                          'type': 'directory',
+                          'format': 'json',
+                          'mimetype': None,
+                          'content': None,
+                          'writable': False}
 
-                content.append(cm)
+                    content.append(cm)
 
         model['content'] = sorted(content)
 
@@ -327,30 +281,31 @@ class AmbryContentsManager(ContentsManager):
         from datetime import datetime
         from ambry.orm import File
 
-        b = self._library.bundle_by_cache_key(cache_key)
+        with self.library_context as l:
+            b = l.bundle_by_cache_key(cache_key)
 
-        model = {'name': b.identity.vname,
-                 'path': '/' + cache_key,
-                 'type': 'directory',
-                 'format': 'json',
-                 'mimetype': None,
-                 'last_modified': datetime.now(),
-                 'created': datetime.now(),
-                 'writable': False}
+            model = {'name': b.identity.vname,
+                     'path': '/' + cache_key,
+                     'type': 'directory',
+                     'format': 'json',
+                     'mimetype': None,
+                     'last_modified': datetime.now(),
+                     'created': datetime.now(),
+                     'writable': False}
 
-        content = []
+            content = []
 
-        for f in b.build_source_files.list_records():
+            for f in b.build_source_files.list_records():
 
-                cm = {'name': f.file_name,
-                      'path': '/{}/{}'.format(cache_key, f.file_name),
-                      'type': 'notebook' if f.file_const == File.BSFILE.NOTEBOOK else 'file',
-                      'format': 'json',
-                      'mimetype': f.record.mime_type,
-                      'content': None,
-                      'writable': False}
+                    cm = {'name': f.file_name,
+                          'path': '/{}/{}'.format(cache_key, f.file_name),
+                          'type': 'notebook' if f.file_const == File.BSFILE.NOTEBOOK else 'file',
+                          'format': 'json',
+                          'mimetype': f.record.mime_type,
+                          'content': None,
+                          'writable': False}
 
-                content.append(cm)
+                    content.append(cm)
 
         model['content'] = sorted(content)
 
@@ -373,32 +328,35 @@ class AmbryContentsManager(ContentsManager):
         cache_key = os.path.join(*parts[:2])
         file_name = parts[-1]
 
-        b = self._library.bundle_by_cache_key(cache_key)
+        with self.library_context as l:
+            b = l.bundle_by_cache_key(cache_key)
 
-        model = {'name': file_name,
-                 'path': path,
-                 'type': 'file',
-                 'format': 'text',
-                 'mimetype': 'text/plain',
-                 'last_modified': datetime.now(),
-                 'created': datetime.now(),
-                 'writable': False}
+            f = b.build_source_files.instance_from_name(file_name)
 
-        f = b.build_source_files.instance_from_name(file_name)
+            model = {'name': file_name,
+                     'path': path,
+                     'type': 'file',
+                     'format': 'text',
+                     'mimetype': 'text/plain',
+                     'last_modified': f.record.modified_datetime,
+                     'created': f.record.modified_datetime,
+                     'writable': False}
 
-        model['content'] = f.getcontent()
+            model['content'] = f.getcontent()
 
         return model
 
-    def _file_from_path(self, path):
+    def _file_from_path(self, l,  path):
 
         parts = path.split('/')
         cache_key = os.path.join(*parts[:2])
         file_name = parts[-1]
 
-        b = self._library.bundle_by_cache_key(cache_key)
+        b = l.bundle_by_cache_key(cache_key)
 
         f = b.build_source_files.instance_from_name(file_name)
+
+        assert f.record.modified
 
         return b, f
 
@@ -411,33 +369,34 @@ class AmbryContentsManager(ContentsManager):
 
         from datetime import datetime
 
-        b, f = self._file_from_path(path)
+        with self.library_context as l:
 
-        model = {'name': f.file_name,
-                 'path': path,
-                 'type': 'notebook',
-                 'format': None,
-                 'mimetype': None,
-                 'last_modified': f.record.modified_datetime or datetime.now(),
-                 'created': f.record.modified_datetime or datetime.now(),
-                 'writable': True,
-                 'content': None
-                 }
+            b, f = self._file_from_path(l, path)
 
-        if content:
-            from cStringIO import StringIO
+            model = {'name': f.file_name,
+                     'path': path,
+                     'type': 'notebook',
+                     'format': None,
+                     'mimetype': None,
+                     'last_modified': f.record.modified_datetime,
+                     'created': f.record.modified_datetime,
+                     'writable': True,
+                     'content': None
+                     }
 
-            sio = StringIO()
+            if content:
+                from cStringIO import StringIO
 
-            f.record_to_fh(sio)
+                sio = StringIO()
+                f.record_to_fh(sio)
+                sio.seek(0)
 
-            sio.seek(0)
-
-            nb = nbformat.read(sio, as_version=4)
-            self.mark_trusted_cells(nb, path)
-            model['content'] = nb
-            model['format'] = 'json'
-            self.validate_notebook_model(model)
+                nb = nbformat.read(sio, as_version=4)
+                self.mark_trusted_cells(nb, path)
+                model['content'] = nb
+                model['format'] = 'json'
+                self.validate_notebook_model(model)
+                pass
 
         return model
 
@@ -487,131 +446,129 @@ class AmbryContentsManager(ContentsManager):
                                 u'%s is not a directory' % path, reason='bad type')
             model = self._file_model(path, content=content, format=format)
 
-        return model
 
-    def _save_directory(self, os_path, model, path=''):
-        """create a directory"""
-        raise NotImplementedError()
-        if is_hidden(os_path, self.root_dir):
-            raise web.HTTPError(400, u'Cannot create hidden directory %r' % os_path)
-        if not os.path.exists(os_path):
-            with self.perm_to_403():
-                os.mkdir(os_path)
-        elif not os.path.isdir(os_path):
-            raise web.HTTPError(400, u'Not a directory: %s' % (os_path))
-        else:
-            self.log.debug("Directory %r already exists", os_path)
+        return model
 
     def save(self, model, path=''):
         """Save the file model and return the model with no content."""
+        import json
+
+        import json
+
         path = path.strip('/')
 
-        b, f = self._file_from_path(path)
+        with self.library_context as l:
+            b, f = self._file_from_path(l, path)
 
-        if 'type' not in model:
-            raise web.HTTPError(400, u'No file type provided')
-        if 'content' not in model and model['type'] != 'directory':
-            raise web.HTTPError(400, u'No file content provided')
+            if 'type' not in model:
+                raise web.HTTPError(400, u'No file type provided')
+            if 'content' not in model and model['type'] != 'directory':
+                raise web.HTTPError(400, u'No file content provided')
 
-        self.run_pre_save_hook(model=model, path=f.record.id)
+            self.run_pre_save_hook(model=model, path=f.record.id)
 
-        f.setcontent(f.default)
-
-        try:
-            if model['type'] == 'notebook':
-
-                nb = nbformat.from_dict(model['content'])
-                self.check_and_sign(nb, path)
-
-                # One checkpoint should always exist for notebooks.
-
-                #if not self.checkpoints.list_checkpoints(path):
-                #    self.create_checkpoint(path)
-
-            elif model['type'] == 'file':
-                pass
-            elif model['type'] == 'directory':
-                pass
+            if not f.record.size:
+                f.record.update_contents(f.default, 'application/json')
             else:
-                raise web.HTTPError(400, "Unhandled contents type: %s" % model['type'])
-        except web.HTTPError:
-            raise
-        except Exception as e:
-            self.log.error(u'Error while saving file: %s %s', path, e, exc_info=True)
-            raise web.HTTPError(500, u'Unexpected error while saving file: %s %s' % (path, e))
+                f.record.update_contents(json.dumps(model['content']), 'application/json')
 
+            try:
+                if model['type'] == 'notebook':
 
-        validation_message = None
-        if model['type'] == 'notebook':
-            self.validate_notebook_model(model)
-            validation_message = model.get('message', None)
+                    nb = nbformat.from_dict(model['content'])
+                    self.check_and_sign(nb, path)
+
+                    # One checkpoint should always exist for notebooks.
+
+                    if not self.checkpoints.list_checkpoints(path):
+                        self.create_checkpoint(path)
+
+                elif model['type'] == 'file':
+                    pass
+                elif model['type'] == 'directory':
+                    pass
+                else:
+                    raise web.HTTPError(400, "Unhandled contents type: %s" % model['type'])
+            except web.HTTPError:
+                raise
+            except Exception as e:
+                self.log.error(u'Error while saving file: %s %s', path, e, exc_info=True)
+                raise web.HTTPError(500, u'Unexpected error while saving file: %s %s' % (path, e))
+
+            validation_message = None
+            if model['type'] == 'notebook':
+                self.validate_notebook_model(model)
+                validation_message = model.get('message', None)
 
         model = self.get(path, content=False)
 
         if validation_message:
             model['message'] = validation_message
 
-        self.run_post_save_hook(model=model, os_path=f.record.id)
 
-        self._library.commit()
 
         return model
 
     def delete_file(self, path):
         """Delete file at path."""
-        raise NotImplementedError()
+        from ambry.orm.exc import NotFoundError
         path = path.strip('/')
-        os_path = self._get_os_path(path)
-        rm = os.unlink
-        if os.path.isdir(os_path):
-            listing = os.listdir(os_path)
-            # Don't delete non-empty directories.
-            # A directory containing only leftover checkpoints is
-            # considered empty.
-            cp_dir = getattr(self.checkpoints, 'checkpoint_dir', None)
-            for entry in listing:
-                if entry != cp_dir:
-                    raise web.HTTPError(400, u'Directory %s not empty' % os_path)
-        elif not os.path.isfile(os_path):
-            raise web.HTTPError(404, u'File does not exist: %s' % os_path)
 
-        if os.path.isdir(os_path):
-            self.log.debug("Removing directory %s", os_path)
-            with self.perm_to_403():
-                shutil.rmtree(os_path)
-        else:
-            self.log.debug("Unlinking file %s", os_path)
-            with self.perm_to_403():
-                rm(os_path)
+        if path == '':
+            raise web.HTTPError(400, u"Not deletable")
+
+        elif path.count('/') == 0:
+            raise web.HTTPError(400, u"Not deletable")
+
+        elif path.count('/') == 1:
+            raise web.HTTPError(400, u"Not deletable")
+
+        with self.library_context as l:
+            from ambry.orm.exc import CommitTrap
+
+            l.database._raise_on_commit = True
+            try:
+                b, f = self._file_from_path(l, path)
+                f.remove()
+                f.remove_record()
+
+            except CommitTrap:
+                raise
+
+            except NotFoundError:
+                raise web.HTTPError(404, u"Bundle does not exist: {}".format(path))
+
+            finally:
+                l.database._raise_on_commit = False
 
     def rename_file(self, old_path, new_path):
         """Rename a file."""
 
-        raise NotImplementedError()
+        from ambry.orm.exc import NotFoundError
 
         old_path = old_path.strip('/')
         new_path = new_path.strip('/')
+
         if new_path == old_path:
             return
 
-        new_os_path = self._get_os_path(new_path)
-        old_os_path = self._get_os_path(old_path)
+        with self.library_context as l:
+            b, f_old = self._file_from_path(l, old_path)
 
-        # Should we proceed with the move?
-        if os.path.exists(new_os_path):
-            raise web.HTTPError(409, u'File already exists: %s' % new_path)
+            parts = new_path.split('/')
+            file_name = parts[-1]
 
-        # Move the file
-        try:
-            with self.perm_to_403():
-                shutil.move(old_os_path, new_os_path)
-        except web.HTTPError:
-            raise
-        except Exception as e:
-            raise web.HTTPError(500, u'Unknown error renaming file: %s %s' % (old_path, e))
+            try:
+                bs = b.dataset.bsfile(file_name)
+                raise web.HTTPError(409, u'File already exists: %s' % new_path)
+            except NotFoundError:
+                pass
+
+            f_old.record.path = file_name
+
 
     def info_string(self):
-        return "Serving notebooks from local directory: %s" % self.root_dir
+        return ""
 
     def get_kernel_path(self, path, model=None):
         """Return the initial API path of  a kernel associated with a given notebook"""

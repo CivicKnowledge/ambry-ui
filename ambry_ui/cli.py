@@ -90,9 +90,6 @@ def start_ui(args, l, rc):
     import ambry_ui.user
     import webbrowser
     import socket
-    from ambry.orm.exc import NotFoundError
-    import os
-    from uuid import uuid4
     from ambry.util import random_string, set_url_part
 
     if args.use_proxy:
@@ -315,4 +312,5 @@ def start_notebook(args, l, rc):
     app._library = l
     app.contents_manager_class = 'ambry_ui.jupyter.AmbryContentsManager'
     app.initialize(None)
+
     app.start()

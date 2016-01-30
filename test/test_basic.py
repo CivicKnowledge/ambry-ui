@@ -6,9 +6,7 @@ import json
 import os
 os.environ['AMBRY_DB'] = 'sqlite:////tmp/foo.db'
 
-
 class MyTestCase(TestCase):
-
 
     def create_app(self):
         from ambry_ui import app
@@ -48,7 +46,6 @@ class MyTestCase(TestCase):
 
         headers = Headers()
         self.add_auth_header(headers)
-
 
         r = self.client.post('/auth-test',
                              headers = headers,
