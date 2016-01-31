@@ -335,8 +335,3 @@ class Renderer(object):
         return os.path.join(os.path.abspath(os.path.dirname(tdir.__file__)), 'js')
 
 
-    def bundle_search(self, terms):
-
-        results = list(self.library.search.search(terms))
-
-        return self.render('search/results.html', result_count = len(results), results=results[:10])

@@ -1,0 +1,11 @@
+<div id="search-inputs">
+    <div class = "row">
+        <form action="{{ url_for('search') }}" method="get" >
+            <div class="input-group">
+                <div class="input-group-addon about">Search</div>
+                <input type="text" id="ds-search" placeholder="Search Terms"
+                       name="terms" class="wide", value="{{ terms }}">
+            </div>
+        </form>
+    </div>
+</div>

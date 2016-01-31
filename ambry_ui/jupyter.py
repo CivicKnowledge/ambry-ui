@@ -356,6 +356,10 @@ class AmbryContentsManager(ContentsManager):
 
         f = b.build_source_files.instance_from_name(file_name)
 
+        if not f.record.modified:
+            import time
+            f.record.modified = int(time.time())
+
         assert f.record.modified
 
         return b, f
@@ -566,7 +570,6 @@ class AmbryContentsManager(ContentsManager):
 
             f_old.record.path = file_name
 
-
     def info_string(self):
         return ""
 
@@ -577,3 +580,4 @@ class AmbryContentsManager(ContentsManager):
         else:
             parent_dir = ''
         return parent_dir
+

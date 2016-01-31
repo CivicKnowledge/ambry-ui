@@ -240,11 +240,19 @@ def bundle_notebook(vid, fileid, ct):
 
 
 
-@app.route('/search/bundle')
-def bundle_search():
+@app.route('/search')
+def search():
     """Search for a datasets and partitions, using a structured JSON term."""
 
-    return aac.renderer.bundle_search(terms=request.args['terms'])
+    terms = request.args['terms']
+
+    r = aac.renderer
+
+    results = list(r.library.search.search(terms))
+
+    return r.render('search/results.html', result_count=len(results), results=results[:10],
+                    terms = terms, **r.cc())
+
 
 @app.route('/bundles/<vid>/tables/<tvid>.<ct>')
 def get_table(vid, tvid, ct):
