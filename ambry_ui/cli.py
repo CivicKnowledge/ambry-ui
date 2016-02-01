@@ -65,6 +65,7 @@ def make_parser(cmd):
     sp = cmd.add_parser('notebook', help='Run jupyter notebook')
     sp.set_defaults(subcommand=start_notebook)
     sp.add_argument('-H', '--host', help="Server host.", default='localhost')
+    sp.add_argument('-p', '--port', help="Server port.", default=None)
     sp.add_argument('-w', '--no-browser', action='store_true', default = False, help="Don't open the webbrowser")
 
 def run_command(args, rc):
@@ -314,6 +315,8 @@ def start_notebook(args, l, rc):
     app.contents_manager_class = 'ambry_ui.jupyter.AmbryContentsManager'
     app.open_browser = not args.no_browser
     app.ip = args.host
+    if args.port is not None:
+        app.port = int(args.port)
     app.initialize(None)
 
     app.start()
