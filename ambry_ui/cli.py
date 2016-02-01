@@ -311,6 +311,7 @@ def start_notebook(args, l, rc):
     app = NotebookApp.instance()
     app._library = l
     app.contents_manager_class = 'ambry_ui.jupyter.AmbryContentsManager'
+    app.NotebookApp.open_browser = False
     app.initialize(None)
 
     app.start()
