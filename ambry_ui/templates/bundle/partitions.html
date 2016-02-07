@@ -38,7 +38,7 @@
         </tr>
         {% for p in b.partitions|sort(attribute='identity.name') -%}
         <tr>
-            <td class="col-name"><a href="{{partition_path(p.vid)}}">{{p.name}}</a><br/>
+            <td class="col-name"><a href="{{url_for('get_partition',pvid=p.vid)}}">{{p.name}}</a><br/>
             <small>{{p.vid}}</small></td>
             <td>{{p.description}}<br/><small>{{ p.sub_description }}. {{ p.count }} Rows.</small></td>
             <td >

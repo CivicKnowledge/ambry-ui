@@ -34,19 +34,7 @@ from ambry.util import get_logger
 
 logger = get_logger(__name__)
 
-##
-# These are in later versions of jinja, but we need them in earlier ones.
-if 'equalto' not in jinja2.tests.TESTS:
-    def test_equalto(value, other):
-        return value == other
 
-    jinja2.tests.TESTS['equalto'] = test_equalto
-
-if 'isin' not in jinja2.tests.TESTS:
-    def test_isin(value, other):
-        return value in other
-
-    jinja2.tests.TESTS['isin'] = test_isin
 
 def resolve(ref):
     if isinstance(ref, string_types):
@@ -67,130 +55,7 @@ def resolve(ref):
         return None
 
 
-# Path functions, for generating URL paths.
 
-
-def bundle_path(b):
-    return '/bundles/{}.html'.format(resolve(b))
-
-
-def schema_path(b, format):
-    return '/bundles/{}/schema.{}'.format(resolve(b), format)
-
-
-def table_path(b, t):
-    return '/bundles/{}/tables/{}.html'.format(resolve(b), resolve(t))
-
-
-def proto_vid_path(pvid):
-
-    try:
-        b, t, c = deref_tc_ref(pvid)
-        return table_path(str(b), str(t))
-
-    except NotFoundError:
-        return '#'
-
-
-def deref_tc_ref(ref):
-    """Given a column or table, vid or id, return the object."""
-    on = ObjectNumber.parse(ref)
-
-    b = str(on.as_dataset)
-
-    try:
-        c = on
-        t = on.as_table
-    except AttributeError:
-        t = on
-        c = None
-
-    if not on.revision:
-        # The table does not have a revision, so we need to get one, just get the
-        # latest one
-
-        r = renderer()
-        dc = r.doc_cache
-
-        tm = dc.table_version_map()
-
-        if str(t) not in tm:
-            # This happens when the the referenced table is in a bundle that is not installed,
-            # often because it is private or restricted
-            raise NotFoundError('Table {} not in table_version_map'.format(str(t)))
-
-        t_vid = next(reversed(sorted(tm.get(str(t)))))
-
-        t = ObjectNumber.parse(t_vid)
-        b = t.as_dataset
-
-        if c:
-            c = c.rev(t.revision)
-
-    return b, t, c
-
-
-def tc_obj(ref):
-    """Return an object for a table or column."""
-
-    dc = renderer().doc_cache
-
-    try:
-        b, t, c = deref_tc_ref(ref)
-    except NotFoundError:
-        return None
-
-    try:
-        table = dc.table(str(t))
-    except NotFoundError:
-
-        # This can happen when the table reference has a version id in it, and that version is not available.
-        # So, try it again without the version
-        table = dc.table(str(ObjectNumber.parse(str(t)).rev(None)))
-
-    if c:
-        try:
-            return table['columns'][str(c.rev(0))]
-        except KeyError:
-            return None
-        except TypeError:
-            return None
-    else:
-        return table
-
-
-def partition_path(b, p=None):
-
-    if p is None:
-        p = b
-
-    try:
-        on = ObjectNumber.parse(p)
-        b = str(on.as_dataset)
-    except NotObjectNumberError as e:
-        return None
-    except AttributeError:
-        b = str(on)
-        raise
-
-
-    return '/bundles/{}/partitions/{}.html'.format(resolve(b), resolve(p))
-
-
-def manifest_path(m):
-    return '/manifests/{}.html'.format(m)
-
-
-def store_path(s):
-    return '/stores/{}.html'.format(s)
-
-
-def store_table_path(s, t):
-    return '/stores/{}/tables/{}.html'.format(s, t)
-
-
-def extract_url(s, t, format):
-    return url_for('get_extract', wid=s, tid=t, ct=format)
 
 
 def db_download_url(base, s):
@@ -262,7 +127,6 @@ class Renderer(object):
 
         self.session = session if session else {}
 
-        # Monkey patch to get the equalto test
 
     def cts(self, ct, session=None):
         """Return a clone with the content type set, and maybe the session"""
@@ -292,10 +156,6 @@ class Renderer(object):
             'ui_version': ui_version,
             'url_for': url_for,
             'from_root': lambda x: x,
-            'schema_path': schema_path,
-            'bundle_path': bundle_path,
-            'table_path': table_path,
-            'partition_path': partition_path,
             'getattr': getattr,
             'title': app.config.get('website_title'),
             'next_page': request.path, # Actually last page, for login redirect

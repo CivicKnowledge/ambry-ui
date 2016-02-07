@@ -1,28 +1,59 @@
+
 {% extends "bundle-parts/layout.html" %}
 {% from 'bundle-parts/tabs.html' import tabs %}
 {% block head %}
     {{ super() }}
-    <link href="/css/ipython.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/ipython.css')}}" rel="stylesheet">
 {% endblock %}
+
 {% block body %}
 
     {{tabs('notebooks',vid, current_user)}}
 
-    <ul class="list-inline">
-        {%  for notebook in notebooks %}
-        <li>
-            <a href="{{ url_for('bundle_notebook', vid=vid, fileid=notebook.record.id, ct='html')}}">
-                {{notebook.file_name}}
-            </a>
-        </li>
-        {% endfor %}
-    </ul>
+    <div class="row">
+        <div class="col-md-10">
+            <ul class="list-inline">
+                {%  for notebook in notebooks %}
+                    <li>
+                    <a href="{{ url_for('bundle_notebook', vid=vid, fileid=notebook.record.id, ct='html')}}">
+                        {{notebook.file_name}}
+                    </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-md-2">
+            <form action="javascript:code_toggle()">
+                <input type="submit" id='input-toggle' class="btn btn-primary pull-right"
+                    value="Click here to toggle on/off the raw code.">
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
 
     {{ notebook_html|safe }}
 
-
-
+    </div>
 
 {% endblock %}
 
+{% block tailjs %}
+    {{  super()  }}
+    <script>
+    code_show=false;
+    function code_toggle() {
+     if (code_show){
+        $('div.input').hide();
+        $("#input-toggle").prop('value', 'Show Code')
+     } else {
+        $('div.input').show();
+        $("#input-toggle").prop('value', 'Hide Code')
+     }
+     code_show = !code_show
+    }
+    $( document ).ready(code_toggle);
+    </script>
+
+{% endblock %}
 

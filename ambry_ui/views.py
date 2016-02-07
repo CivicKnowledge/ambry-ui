@@ -16,7 +16,6 @@ from werkzeug.local import LocalProxy
 
 aac = LocalProxy(get_aac)
 
-
 @app.errorhandler(500)
 def page_not_found(e):
 
@@ -49,10 +48,10 @@ def bundle_index():
 
 
 
-@app.route('/bundles/<vid>.<ct>')
-def bundle_about(vid, ct):
+@app.route('/bundles/<vid>')
+def bundle_main(vid):
 
-    r = aac.renderer.cts(ct)
+    r = aac.renderer
 
     cxt = dict(
         vid=vid,
@@ -64,10 +63,10 @@ def bundle_about(vid, ct):
     return r.render('bundle/about.html', **cxt)
 
 
-@app.route('/bundles/<vid>/meta.<ct>')
-def bundle_meta(vid, ct):
+@app.route('/bundles/<vid>/meta')
+def bundle_meta(vid):
 
-    r = aac.renderer.cts(ct)
+    r = aac.renderer
 
     def flatten_dict(d):
         def expand(key, value):
@@ -93,10 +92,10 @@ def bundle_meta(vid, ct):
 
     return r.render('bundle/meta.html', **cxt)
 
-@app.route('/bundles/<vid>/files.<ct>')
-def bundle_files(vid, ct):
+@app.route('/bundles/<vid>/files')
+def bundle_files(vid):
 
-    r = aac.renderer.cts(ct)
+    r = aac.renderer
 
     cxt = dict(
         vid=vid,
@@ -106,61 +105,7 @@ def bundle_files(vid, ct):
 
     return r.render('bundle/partitions.html', **cxt)
 
-@app.route('/bundles/<vid>/documentation.<ct>')
-def bundle_documentation(vid, ct):
 
-    r = aac.renderer.cts(ct)
-
-    cxt = dict(
-        vid=vid,
-        b=r.library.bundle(vid),
-        **r.cc()
-
-    )
-
-    return r.render('bundle/documentation.html', **cxt)
-
-@app.route('/bundles/<vid>/sources.<ct>')
-def bundle_sources(vid, ct):
-    from ambry.util import drop_empty
-
-    r = aac.renderer.cts(ct)
-
-    b = r.library.bundle(vid)
-
-    sources = []
-    for i, row in enumerate(b.sources):
-        if not sources:
-            sources.append(list(row.dict.keys()))
-
-        sources.append(list(row.dict.values()))
-
-    sources = drop_empty(sources)
-
-    cxt = dict(
-        vid=vid,
-        b=b,
-        sources = sources[1:] if sources else [],
-        sources_header = ['name','source_table_name','ref'],
-        **r.cc()
-
-    )
-
-    return r.render('bundle/sources.html', **cxt)
-
-@app.route('/bundles/<vid>/build.<ct>')
-def bundle_build(vid, ct):
-
-    r = aac.renderer.cts(ct)
-
-    cxt = dict(
-        vid=vid,
-        b=r.library.bundle(vid),
-        **r.cc()
-
-    )
-
-    return r.render('bundle/build.html', **cxt)
 
 @app.route('/bundles/<vid>/file/<name>')
 def bundle_file(vid,name):
@@ -183,12 +128,12 @@ def bundle_file(vid,name):
         return send_file(StringIO(sio.getvalue()))
 
 
-@app.route('/bundles/<vid>/notebooks.<ct>')
-def bundle_notebooks(vid, ct):
+@app.route('/bundles/<vid>/notebooks')
+def bundle_notebooks(vid):
     """Return a file from the bundle"""
     from ambry.orm.file import File
 
-    r = aac.renderer.cts(ct)
+    r = aac.renderer
     b = r.library.bundle(vid)
 
     cxt = dict(
@@ -202,15 +147,15 @@ def bundle_notebooks(vid, ct):
     return r.render('bundle/notebooks.html', **cxt)
 
 
-@app.route('/bundles/<vid>/notebooks/<fileid>.<ct>')
-def bundle_notebook(vid, fileid, ct):
+@app.route('/bundles/<vid>/notebooks/<fileid>')
+def bundle_notebook(vid, fileid):
     """Return a file from the bundle"""
     from ambry.orm.file import File
     import nbformat
     from traitlets.config import Config
     from nbconvert import HTMLExporter
 
-    r = aac.renderer.cts(ct)
+    r = aac.renderer
     b = r.library.bundle(vid)
 
     nbfile = b.build_source_files.file_by_id(fileid)
@@ -239,7 +184,6 @@ def bundle_notebook(vid, fileid, ct):
     return r.render('bundle/notebook.html', **cxt)
 
 
-
 @app.route('/search')
 def search():
     """Search for a datasets and partitions, using a structured JSON term."""
@@ -254,10 +198,10 @@ def search():
                     terms = terms, **r.cc())
 
 
-@app.route('/bundles/<vid>/tables/<tvid>.<ct>')
-def get_table(vid, tvid, ct):
+@app.route('/bundles/<vid>/tables/<tvid>')
+def get_table(vid, tvid):
 
-    r = aac.renderer.cts(ct)
+    r = aac.renderer
     b = r.library.bundle(vid)
 
     cxt = dict(
@@ -271,11 +215,11 @@ def get_table(vid, tvid, ct):
 
     return r.render('bundle/table.html', **cxt)
 
-@app.route('/bundles/<bvid>/partitions/<pvid>.<ct>')
-def get_bundle_partitions(bvid, pvid, ct):
-    r = aac.renderer.cts(ct)
-    b = r.library.bundle(bvid)
-    p = b.partition(pvid)
+@app.route('/partitions/<pvid>')
+def get_partition(pvid):
+    r = aac.renderer
+    p = r.library.partition(pvid)
+    b = p.bundle
 
     # FIXME This should be cached somewhere.
 
@@ -289,7 +233,7 @@ def get_bundle_partitions(bvid, pvid, ct):
                 docs += v
 
     cxt = dict(
-        vid=bvid,
+        vid=b.identity.vid,
         b=b,
         p=p,
         t=p.table,
@@ -400,17 +344,4 @@ def stream_mpack(pvid):
             yield msgpack.packb(row)
 
     return Response(stream_msgp(), mimetype='application/msgpack')
-
-# Really should be  serving this from a static directory, but this
-# is easier for now.
-@app.route('/css/<name>')
-def css_file(name):
-    return send_from_directory(aac.renderer.css_dir, name)
-
-
-@app.route('/js/<path:path>')
-def js_file(path):
-    import os.path
-
-    return send_from_directory(*os.path.split(os.path.join(aac.renderer.js_dir,path)))
 
