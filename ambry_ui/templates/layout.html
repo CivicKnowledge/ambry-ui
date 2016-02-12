@@ -103,7 +103,7 @@
     <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-migrate/1.2.1/jquery-migrate.min.js"></script> -->
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-    <script language="javascript" type="text/javascript" src="/js/searchbox.js"></script>
+
     <script>
         (function (i, s, o, g, r, a, m) {
             i['GoogleAnalyticsObject'] = r;
@@ -121,29 +121,7 @@
         ga('send', 'pageview');
 
     </script>
-    <script>
 
-    $('#search-inputs').searchbox({
-      url: '/search/bundle',
-      param: 'term',
-      dom_id: '#dataset-results',
-      delay: 1000,
-      loading_css: '#loading'
-    })
-
-    $(function() {
-        $( "#place-search" ).autocomplete({
-          source: "/search/place",
-          minLength: 2,
-          appendTo: "#place-search-results"
-        });
-    });
-
-    $(document).bind('before.searchbox', function() {
-        $('#dataset-results').empty()
-    })
-
-    </script>
 
 {% endblock %}
 </body>

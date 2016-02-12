@@ -100,13 +100,19 @@
                         <div><span class="histospark">
                         {% for e in p.stats_dict[c.name].hist %}{{e}},{% endfor %}
                         </span></div>
-                        <div><span class="boxplot">
-                            {{p.stats_dict[c.name].min }},
-                            {{p.stats_dict[c.name].p25}},
-                            {{p.stats_dict[c.name].p50}},
-                            {{p.stats_dict[c.name].p50}},
-                            {{p.stats_dict[c.name].max}}
-                        </span></div>
+                        <div>
+                            <a tabindex = "0"
+                        data-toggle="popover" data-placement="left" data-trigger="hover" data-html="true"
+                        data-title="Quartiles"
+                        data-content="<div><dl class='dl-horizontal'>
+                            <dt>Min</dt><dd>{{'%0.2f'| format(p.stats_dict[c.name].min|float) }}</dd>
+                            <dt>25%</dt><dd>{{'%0.2f'| format(p.stats_dict[c.name].p25|float) }}</dd>
+                            <dt>50%</dt><dd>{{'%0.2f'| format(p.stats_dict[c.name].p50|float) }}</dd>
+                            <dt>75%</dt><dd>{{'%0.2f'| format(p.stats_dict[c.name].p75|float) }}</dd>
+                            <dt>Max</dt><dd>{{'%0.2f'| format(p.stats_dict[c.name].max|float) }}</dd>
+                        </dl></div>"> Quartiles </a>
+
+                            </div>
                     {% endif %}
 
                 </td>

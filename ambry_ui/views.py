@@ -243,6 +243,34 @@ def get_partition(pvid):
 
     return r.render('bundle/partition.html', **cxt)
 
+@app.route('/partitions/<pvid>/recline')
+def get_recline(pvid):
+    r = aac.renderer
+    p = r.library.partition(pvid)
+    b = p.bundle
+
+
+
+    source_names = [ s.name for s in p.table.sources ]
+
+    docs = []
+
+    for k, v in b.metadata.external_documentation.group_by_source().items():
+        if k in source_names:
+            for d in v:
+                docs += v
+
+    cxt = dict(
+        vid=b.identity.vid,
+        b=b,
+        p=p,
+        t=p.table,
+        docs=docs,
+        **r.cc()
+    )
+
+    return r.render('bundle/recline.html', **cxt)
+
 @app.route('/bundles/<bvid>/process.<ct>')
 def bundle_process(bvid, ct):
     r = aac.renderer.cts(ct)

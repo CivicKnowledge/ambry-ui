@@ -24,3 +24,36 @@
 
 {% endblock %}
 
+{% block tailjs %}
+
+    {{ super() }}
+
+    <script language="javascript" type="text/javascript" src="/js/searchbox.js"></script>
+    <script>
+
+    $('#search-inputs').searchbox({
+      url: '/search/bundle',
+      param: 'term',
+      dom_id: '#dataset-results',
+      delay: 1000,
+      loading_css: '#loading'
+    })
+
+    $(function() {
+        $( "#place-search" ).autocomplete({
+          source: "/search/place",
+          minLength: 2,
+          appendTo: "#place-search-results"
+        });
+    });
+
+    $(document).bind('before.searchbox', function() {
+        $('#dataset-results').empty()
+    })
+
+    </script>
+
+
+{% endblock %}
+
+
