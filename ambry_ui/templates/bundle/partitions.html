@@ -43,7 +43,7 @@
             <td>{{p.description}}<br/><small>{{ p.sub_description }}. {{ p.count }} Rows.</small></td>
             <td >
                 {%  if show_download %}
-                <a class="btn btn-primary btn-sm" href="{{url_for('stream_file', pvid=p.vid, ct='csv')}}">CSV</a>
+                <a class="btn btn-primary btn-sm" href="{{url_for('stream_file', pvid=p.vname, ct='csv')}}">CSV</a>
                 {% else %}
                 <div class="btn btn-default btn-sm" >{{ access }}</div>
                 {%  endif  %}
