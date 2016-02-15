@@ -5,13 +5,18 @@ Copyright 2014, Civic Knowledge. All Rights Reserved
 """
 
 import os
+import templates as tdir
+from ambry.util import get_logger
 from flask import Flask, g
-from uuid import uuid4
-from flask_wtf.csrf import CsrfProtect
-from session import ItsdangerousSessionInterface
+from flask import Response, url_for, session
+from flask.json import JSONEncoder as FlaskJSONEncoder
+from flask.json import dumps
 from flask_login import LoginManager
+from flask_wtf.csrf import CsrfProtect
+from jinja2 import Environment, PackageLoader
+from session import ItsdangerousSessionInterface
 
-import logging
+logger = get_logger(__name__)
 
 # Command declarations for `ambry config installcli`
 commands = ['ambry_ui.cli']
@@ -23,7 +28,7 @@ app_config = {
     'use_proxy': bool(os.getenv('AMBRY_UI_USE_PROXY', False)),
     'DEBUG': bool(os.getenv('AMBRY_UI_DEBUG', False)),
 
-    'MAX_CONTENT_LENGTH': 1024*1024*512,
+    'MAX_CONTENT_LENGTH': 1024 * 1024 * 512,
     'SESSION_TYPE': 'filesystem',
     'WTF_CSRF_CHECK_DEFAULT': False,  # Turn off CSRF by default. Must enable on specific views.
 
@@ -31,23 +36,85 @@ app_config = {
     'WTF_CSRF_SECRET_KEY': os.getenv('AMBRY_UI_CSRF_SECRET', os.getenv('AMBRY_UI_SECRET')),
     'website_title': os.getenv('AMBRY_UI_TITLE', "Ambry Data Library"),
 
-    'LOGGED_IN_USER': None, # Name of user to auto-login
+    'LOGGED_IN_USER': None,  # Name of user to auto-login
 }
+
+
+class JSONEncoder(FlaskJSONEncoder):
+    def default(self, o):
+        return str(type(o))
+
+
+class Renderer(object):
+    def __init__(self, library, env=None, content_type='html', session=None,
+                 blueprints=None):
+
+        self.library = library
+
+        self.env = env if env else Environment(loader=PackageLoader('ambry_ui', 'templates'))
+
+        # Set to true to get Render to return json instead
+        self.content_type = content_type
+
+        self.blueprints = blueprints
+
+        self.session = session if session else {}
+
+    def cc(self):
+        """Return common context values. These are primarily helper functions
+        that can be used from the context. """
+        from ambry._meta import __version__ as ambry_version
+        from __meta__ import __version__ as ui_version
+        from flask import request
+
+        return {
+            'ambry_version': ambry_version,
+            'ui_version': ui_version,
+            'url_for': url_for,
+            'from_root': lambda x: x,
+            'getattr': getattr,
+            'title': app.config.get('website_title'),
+            'next_page': request.path,  # Actually last page, for login redirect
+            'session': session,
+            'autologin_user': app.config['LOGGED_IN_USER']
+
+        }
+
+    def render(self, template, *args, **kwargs):
+        from flask import render_template
+
+        context = self.cc()
+        context.update(kwargs)
+
+        context['l'] = self.library
+
+        if self.content_type == 'json':
+            return Response(dumps(kwargs, cls=JSONEncoder, indent=4), mimetype='application/json')
+
+        else:
+            return render_template(template, *args, **context)
+
+    def json(self, **kwargs):
+        return Response(dumps(kwargs, cls=JSONEncoder), mimetype='application/json')
+
 
 class AmbryAppContext(object):
     """Ambry specific objects for the application context"""
 
     def __init__(self):
         from ambry.library import Library
-        from render import Renderer
         from ambry.run import get_runconfig
 
         rc = get_runconfig()
-        self.library = Library(rc, read_only=True, echo = False)
+        self.library = Library(rc, read_only=True, echo=False)
         self.renderer = Renderer(self.library)
 
     def render(self, template, *args, **kwargs):
         return self.renderer.render(template, *args, **kwargs)
+
+    @property
+    def cc(self):
+        return self.renderer.cc()
 
     def bundle(self, ref):
         from flask import abort
@@ -58,13 +125,14 @@ class AmbryAppContext(object):
         except NotFoundError:
             abort(404)
 
-    def json(self,*args, **kwargs):
+    def json(self, *args, **kwargs):
         return self.renderer.json(*args, **kwargs)
 
     def close(self):
         self.library.close()
 
-def get_aac(): # Ambry Application Context
+
+def get_aac():  # Ambry Application Context
     """Opens a new database connection if there is none yet for the
     current application context.
     """
@@ -72,6 +140,7 @@ def get_aac(): # Ambry Application Context
         g.aac = AmbryAppContext()
 
     return g.aac
+
 
 class Application(Flask):
     def __init__(self, app_config, import_name, static_path=None, static_url_path=None, static_folder='static',
@@ -90,7 +159,7 @@ class Application(Flask):
         if not self._initialized:
             if not app_config['SECRET_KEY']:
                 app.logger.error("SECRET_KEY was not set. Setting to an insecure value")
-                app_config['SECRET_KEY'] = 'secret' # Must be the same for all worker processes.
+                app_config['SECRET_KEY'] = 'secret'  # Must be the same for all worker processes.
 
             if not app_config['WTF_CSRF_SECRET_KEY']:
                 app_config['WTF_CSRF_SECRET_KEY'] = app_config['SECRET_KEY']
@@ -111,11 +180,13 @@ class Application(Flask):
 
 app = Application(app_config, __name__)
 
+
 @app.teardown_appcontext
 def close_connection(exception):
-    aac = getattr(g,'aac', None)
+    aac = getattr(g, 'aac', None)
     if aac is not None:
         aac.close()
+
 
 # Flask Magic. The views have to be imported for Flask to use them.
 import ambry_ui.views

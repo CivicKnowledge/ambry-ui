@@ -8,7 +8,9 @@
 {% block pageheader %}
     <div class="page-header">
         <div class="summary">{{t.description}}. {{ t.columns|length }} Columns.</div>
+        <div>From: <a href="{{url_for('bundle_main',vid=t.dataset.vid)}}">{{t.dataset.fqname}}</a>.</div>
     </div>
+
 
 {%  endblock %}
 

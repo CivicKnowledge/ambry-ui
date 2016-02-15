@@ -1,22 +1,16 @@
 """
-API Views, return javascript rendietions of objects and allowing modification of the database
+API Views, return javascript renditions of objects and allowing modification of the database
 """
 
-import os
+from flask import url_for
+from werkzeug.local import LocalProxy
 from . import app, get_aac
 
 
-from flask import g, current_app, send_from_directory, send_file, request, abort, url_for
-from flask.json import jsonify
-
-from werkzeug.local import LocalProxy
-
-
 aac = LocalProxy(get_aac)
+
 @app.route('/json')
 def bundle_index_json():
-    import os
-
     r = aac.renderer
 
     def augment(b):

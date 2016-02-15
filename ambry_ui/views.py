@@ -6,68 +6,42 @@ the Revised BSD License, included in this distribution as LICENSE.txt
 
 import os
 from . import app, get_aac
-
-
 from flask import g, current_app, send_from_directory, send_file, request, abort, url_for
-from flask.json import jsonify
-
 from werkzeug.local import LocalProxy
-
 
 aac = LocalProxy(get_aac)
 
+
 @app.errorhandler(500)
 def page_not_found(e):
-
     aac.render('500.html', e=e)
+
 
 @app.route('/')
 @app.route('/index')
 def index():
-    r = aac.renderer
-
     cxt = dict(
-        bundles=[b for b in r.library.bundles],
-        **r.cc()
+        bundles=[b for b in aac.library.bundles],
+        **aac.cc
     )
 
-    return r.render('index.html', **cxt)
-
-
-@app.route('/bundles')
-def bundle_index():
-
-    r = aac.renderer
-
-    cxt = dict(
-        bundles=[b for b in r.library.bundles],
-        **r.cc()
-    )
-
-    return r.render('bundles.html', **cxt)
-
+    return aac.render('index.html', **cxt)
 
 
 @app.route('/bundles/<vid>')
 def bundle_main(vid):
-
-    r = aac.renderer
-
     cxt = dict(
         vid=vid,
-        b=r.library.bundle(vid),
+        b=aac.library.bundle(vid),
         sources_header=['name', 'source_table_name', 'ref'],
-        **r.cc()
+        **aac.cc
     )
 
-    return r.render('bundle/about.html', **cxt)
+    return aac.render('bundle/about.html', **cxt)
 
 
 @app.route('/bundles/<vid>/meta')
 def bundle_meta(vid):
-
-    r = aac.renderer
-
     def flatten_dict(d):
         def expand(key, value):
             if isinstance(value, dict):
@@ -79,44 +53,41 @@ def bundle_meta(vid):
 
         return dict(items)
 
-    b = r.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
-    metadata = { k : sorted(flatten_dict(v).items()) for k, v in b.metadata.dict.items() }
+    metadata = {k: sorted(flatten_dict(v).items()) for k, v in b.metadata.dict.items()}
 
     cxt = dict(
         vid=vid,
         b=b,
         metadata=sorted(metadata.items()),
-        **r.cc()
+        **aac.cc
     )
 
-    return r.render('bundle/meta.html', **cxt)
+    return aac.render('bundle/meta.html', **cxt)
+
 
 @app.route('/bundles/<vid>/files')
 def bundle_files(vid):
-
-    r = aac.renderer
-
     cxt = dict(
         vid=vid,
-        b=r.library.bundle(vid),
-        **r.cc()
+        b=aac.library.bundle(vid),
+        **aac.cc
     )
 
-    return r.render('bundle/partitions.html', **cxt)
-
+    return aac.render('bundle/partitions.html', **cxt)
 
 
 @app.route('/bundles/<vid>/file/<name>')
-def bundle_file(vid,name):
+def bundle_file(vid, name):
     """Return a file from the bundle"""
     from cStringIO import StringIO
     from ambry.orm.file import File
     from contextlib import closing
 
-    m = { v:k for k,v in File.path_map.items()}
+    m = {v: k for k, v in File.path_map.items()}
 
-    b = aac.renderer.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
     bs = b.build_source_files.file(m[name])
 
@@ -133,18 +104,17 @@ def bundle_notebooks(vid):
     """Return a file from the bundle"""
     from ambry.orm.file import File
 
-    r = aac.renderer
-    b = r.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
     cxt = dict(
         vid=vid,
         b=b,
         notebooks=b.build_source_files.list_records(File.BSFILE.NOTEBOOK),
-        **r.cc()
+        **aac.cc
 
     )
 
-    return r.render('bundle/notebooks.html', **cxt)
+    return aac.render('bundle/notebooks.html', **cxt)
 
 
 @app.route('/bundles/<vid>/notebooks/<fileid>')
@@ -155,8 +125,7 @@ def bundle_notebook(vid, fileid):
     from traitlets.config import Config
     from nbconvert import HTMLExporter
 
-    r = aac.renderer
-    b = r.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
     nbfile = b.build_source_files.file_by_id(fileid)
 
@@ -174,14 +143,12 @@ def bundle_notebook(vid, fileid):
         nbfile=nbfile,
         notebooks=b.build_source_files.list_records(File.BSFILE.NOTEBOOK),
         notebook=notebook,
-        notebook_html = body,
-
-        **r.cc()
+        notebook_html=body,
+        **aac.cc
 
     )
 
-
-    return r.render('bundle/notebook.html', **cxt)
+    return aac.render('bundle/notebook.html', **cxt)
 
 
 @app.route('/search')
@@ -190,40 +157,36 @@ def search():
 
     terms = request.args['terms']
 
-    r = aac.renderer
+    results = list(aac.library.search.search(terms))
 
-    results = list(r.library.search.search(terms))
-
-    return r.render('search/results.html', result_count=len(results), results=results[:10],
-                    terms = terms, **r.cc())
+    return aac.render('search/results.html', result_count=len(results), results=results[:10],
+                      terms=terms, **aac.cc)
 
 
 @app.route('/bundles/<vid>/tables/<tvid>')
 def get_table(vid, tvid):
-
-    r = aac.renderer
-    b = r.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
     cxt = dict(
         vid=vid,
         tvid=tvid,
         b=b,
         t=b.table(tvid),
-        **r.cc()
+        **aac.cc
 
     )
 
-    return r.render('bundle/table.html', **cxt)
+    return aac.render('bundle/table.html', **cxt)
+
 
 @app.route('/partitions/<pvid>')
 def get_partition(pvid):
-    r = aac.renderer
-    p = r.library.partition(pvid)
+    p = aac.library.partition(pvid)
     b = p.bundle
 
     # FIXME This should be cached somewhere.
 
-    source_names = [ s.name for s in p.table.sources ]
+    source_names = [s.name for s in p.table.sources]
 
     docs = []
 
@@ -238,67 +201,38 @@ def get_partition(pvid):
         p=p,
         t=p.table,
         docs=docs,
-        **r.cc()
+        **aac.cc
     )
 
-    return r.render('bundle/partition.html', **cxt)
-
-@app.route('/partitions/<pvid>/recline')
-def get_recline(pvid):
-    r = aac.renderer
-    p = r.library.partition(pvid)
-    b = p.bundle
+    return aac.render('bundle/partition.html', **cxt)
 
 
-
-    source_names = [ s.name for s in p.table.sources ]
-
-    docs = []
-
-    for k, v in b.metadata.external_documentation.group_by_source().items():
-        if k in source_names:
-            for d in v:
-                docs += v
-
-    cxt = dict(
-        vid=b.identity.vid,
-        b=b,
-        p=p,
-        t=p.table,
-        docs=docs,
-        **r.cc()
-    )
-
-    return r.render('bundle/recline.html', **cxt)
-
-@app.route('/bundles/<bvid>/process.<ct>')
-def bundle_process(bvid, ct):
-    r = aac.renderer.cts(ct)
-    b = r.library.bundle(bvid)
+@app.route('/bundles/<bvid>/process')
+def bundle_process(bvid):
+    b = aac.library.bundle(bvid)
 
     headers, rows = b.progress.stats()
 
     cxt = dict(
         vid=bvid,
         b=b,
-        exceptions = b.progress.exceptions,
+        exceptions=b.progress.exceptions,
         process=b.progress.bundle_process_logs(show_all=False),
-        stats= [['']+headers] + rows,
-        **r.cc()
+        stats=[[''] + headers] + rows,
+        **aac.cc
     )
 
-    return r.render('bundle/process.html', **cxt)
+    return aac.render('bundle/process.html', **cxt)
+
 
 @app.route('/file/<pvid>.<ct>')
-def stream_file(pvid,ct):
+def stream_file(pvid, ct):
     from flask import abort
     from flask.ext.login import current_user
     from ambry.orm.exc import NotFoundError
 
-    r = aac.renderer
-
     try:
-        p = r.library.partition(pvid)
+        p = aac.library.partition(pvid)
     except NotFoundError:
         return abort(404)
 
@@ -318,13 +252,13 @@ def stream_file(pvid,ct):
 
     return abort(404)
 
+
 def stream_csv(pvid):
     from flask import Response
     import cStringIO as StringIO
     import unicodecsv as csv
 
-    r = aac.renderer
-    p = r.library.partition(pvid)
+    p = aac.library.partition(pvid)
 
     if p.is_local:
         reader = p.reader
@@ -348,7 +282,6 @@ def stream_csv(pvid):
         for row in reader.rows:
             yield yield_csv_row(writer, b, row)
 
-
     return Response(stream_csv(), mimetype='text/csv')
 
 
@@ -358,8 +291,7 @@ def stream_mpack(pvid):
     import unicodecsv as csv
     import msgpack
 
-    r = aac.renderer
-    p = r.library.partition(pvid)
+    p = aac.library.partition(pvid)
 
     if p.is_local:
         reader = p.reader
@@ -372,4 +304,3 @@ def stream_mpack(pvid):
             yield msgpack.packb(row)
 
     return Response(stream_msgp(), mimetype='application/msgpack')
-

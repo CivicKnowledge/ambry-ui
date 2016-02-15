@@ -1,29 +1,13 @@
-"""A contents manager that uses the local file system for storage."""
+"""A contents manager that uses the ambry database for storage"""
 
-# Copyright (c) Jupyter Development Team.
-# Distributed under the terms of the Modified BSD License.
-
-
-import io
-import os
-import shutil
-import mimetypes
 import nbformat
-
-from tornado import web
-
-
-from notebook.services.contents.manager import ContentsManager
-from notebook.services.contents.checkpoints import Checkpoints, GenericCheckpointsMixin
-
+import os
 from ipython_genutils.importstring import import_item
-from traitlets import Any, Unicode, Bool, TraitError
 from ipython_genutils.py3compat import getcwd, string_types
-from notebook.services.contents import tz
-from notebook.utils import (
-    is_hidden,
-    to_api_path,
-)
+from notebook.services.contents.checkpoints import Checkpoints, GenericCheckpointsMixin
+from notebook.services.contents.manager import ContentsManager
+from tornado import web
+from traitlets import Any, Unicode, Bool, TraitError
 
 _script_exporter = None
 
@@ -322,7 +306,6 @@ class AmbryContentsManager(ContentsManager):
           If 'base64', the raw bytes contents will be encoded as base64.
           If not specified, try to decode as UTF-8, and fall back to base64
         """
-        from datetime import datetime
 
         parts = path.split('/')
         cache_key = os.path.join(*parts[:2])
@@ -370,8 +353,6 @@ class AmbryContentsManager(ContentsManager):
         if content is requested, the notebook content will be populated
         as a JSON structure (not double-serialized)
         """
-
-        from datetime import datetime
 
         with self.library_context as l:
 
@@ -455,7 +436,6 @@ class AmbryContentsManager(ContentsManager):
 
     def save(self, model, path=''):
         """Save the file model and return the model with no content."""
-        import json
 
         import json
 
