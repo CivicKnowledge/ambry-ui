@@ -1,9 +1,9 @@
 <!-- unaddorned search results, for loading from javascript -->
 {% for r in results -%}
 <div class="result">
-    <h2>{{r.bundle.metadata.about.title}}
+    <h2><a href="{{url_for('bundle_main', vid=r.bundle.identity.vid)}}">{{r.bundle.metadata.about.title}}</a>
     <small>
-        <p><a href="{{url_for('bundle_main', vid=r.bundle.identity.vid)}}">{{r.bundle.identity.vname}}</a>
+        <p>{{r.bundle.identity.vname}}
         {%  if r.partitions|length>10 %}(10 of {{r.partitions|length}})
         {%  elif r.partitions %}({{r.partitions|length}})
         {%  else %} {% endif %}
@@ -14,8 +14,8 @@
     {% for p in r.partition_records  -%}
         {%- if loop.index < 10  and p.table%}
             <div class="search-result-partition">
-                <a href="{{url_for('get_partition', pvid=p.vid)}}">{{ p.table.description }}</a>
-                <small><p>{{ p.sub_description }} </p></small>
+                <a href="{{url_for('get_partition', pvid=p.vid)}}">{{ p.display.title }}</a>
+                <small><p>{{ p.display.description }} {{ p.display.sub_description }} </p></small>
             </div>
         {% endif %}
 

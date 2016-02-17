@@ -3,6 +3,9 @@
 <a href="{{ url_for(page_name,**kwargs) }}"><span class="label label-primary">{json}</span></a>
 {% endmacro %}
 
+
+
+
 {% macro modal(id, title, summary = '', tabindex = -1) -%}
 <!-- Modal -->
 <div class="modal fade" id="{{id}}" tabindex="{{tabindex}}" role="dialog" aria-labelledby="{{id}}-label" aria-hidden="true">

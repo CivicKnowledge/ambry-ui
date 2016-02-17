@@ -11,10 +11,9 @@ from werkzeug.local import LocalProxy
 
 aac = LocalProxy(get_aac)
 
-
 @app.errorhandler(500)
 def page_not_found(e):
-    aac.render('500.html', e=e)
+    return aac.render('500.html', e=e)
 
 
 @app.route('/')
@@ -159,8 +158,13 @@ def search():
 
     results = list(aac.library.search.search(terms))
 
-    return aac.render('search/results.html', result_count=len(results), results=results[:10],
-                      terms=terms, **aac.cc)
+    try:
+        r =  aac.render('search/results.html', result_count=len(results), results=results[:10],
+                          terms=terms, **aac.cc)
+    except Exception as e:
+        raise
+
+    return r
 
 
 @app.route('/bundles/<vid>/tables/<tvid>')
@@ -181,6 +185,7 @@ def get_table(vid, tvid):
 
 @app.route('/partitions/<pvid>')
 def get_partition(pvid):
+
     p = aac.library.partition(pvid)
     b = p.bundle
 
@@ -205,6 +210,7 @@ def get_partition(pvid):
     )
 
     return aac.render('bundle/partition.html', **cxt)
+
 
 
 @app.route('/bundles/<bvid>/process')

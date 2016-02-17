@@ -13,7 +13,6 @@ from flask.json import JSONEncoder as FlaskJSONEncoder
 from flask.json import dumps
 from flask_login import LoginManager
 from flask_wtf.csrf import CsrfProtect
-from jinja2 import Environment, PackageLoader
 from session import ItsdangerousSessionInterface
 
 logger = get_logger(__name__)
@@ -45,21 +44,29 @@ class JSONEncoder(FlaskJSONEncoder):
         return str(type(o))
 
 
-class Renderer(object):
-    def __init__(self, library, env=None, content_type='html', session=None,
-                 blueprints=None):
 
-        self.library = library
+class AmbryAppContext(object):
+    """Ambry specific objects for the application context"""
 
-        self.env = env if env else Environment(loader=PackageLoader('ambry_ui', 'templates'))
+    def __init__(self):
+        from ambry.library import Library
+        from ambry.run import get_runconfig
 
-        # Set to true to get Render to return json instead
-        self.content_type = content_type
+        rc = get_runconfig()
+        self.library = Library(rc, read_only=True, echo=False)
 
-        self.blueprints = blueprints
+    def render(self, template, *args, **kwargs):
+        from flask import render_template
 
-        self.session = session if session else {}
+        context = self.cc
 
+        context.update(kwargs)
+
+        context['l'] = self.library
+
+        return render_template(template, *args, **context)
+
+    @property
     def cc(self):
         """Return common context values. These are primarily helper functions
         that can be used from the context. """
@@ -80,42 +87,6 @@ class Renderer(object):
 
         }
 
-    def render(self, template, *args, **kwargs):
-        from flask import render_template
-
-        context = self.cc()
-        context.update(kwargs)
-
-        context['l'] = self.library
-
-        if self.content_type == 'json':
-            return Response(dumps(kwargs, cls=JSONEncoder, indent=4), mimetype='application/json')
-
-        else:
-            return render_template(template, *args, **context)
-
-    def json(self, **kwargs):
-        return Response(dumps(kwargs, cls=JSONEncoder), mimetype='application/json')
-
-
-class AmbryAppContext(object):
-    """Ambry specific objects for the application context"""
-
-    def __init__(self):
-        from ambry.library import Library
-        from ambry.run import get_runconfig
-
-        rc = get_runconfig()
-        self.library = Library(rc, read_only=True, echo=False)
-        self.renderer = Renderer(self.library)
-
-    def render(self, template, *args, **kwargs):
-        return self.renderer.render(template, *args, **kwargs)
-
-    @property
-    def cc(self):
-        return self.renderer.cc()
-
     def bundle(self, ref):
         from flask import abort
         from ambry.orm.exc import NotFoundError
@@ -125,8 +96,8 @@ class AmbryAppContext(object):
         except NotFoundError:
             abort(404)
 
-    def json(self, *args, **kwargs):
-        return self.renderer.json(*args, **kwargs)
+    def json(self, **kwargs):
+        return Response(dumps(kwargs, cls=JSONEncoder), mimetype='application/json')
 
     def close(self):
         self.library.close()
@@ -151,8 +122,8 @@ class Application(Flask):
         self.csrf = CsrfProtect()
         self.login_manager = LoginManager()
 
-        super(Application, self).__init__(import_name, static_path, static_url_path, static_folder, template_folder,
-                                          instance_path, instance_relative_config)
+        super(Application, self).__init__(import_name, static_path, static_url_path, static_folder,
+                                          template_folder, instance_path, instance_relative_config)
 
     def __call__(self, environ, start_response):
 
@@ -177,12 +148,12 @@ class Application(Flask):
 
         return super(Application, self).__call__(environ, start_response)
 
-
 app = Application(app_config, __name__)
 
 
 @app.teardown_appcontext
 def close_connection(exception):
+
     aac = getattr(g, 'aac', None)
     if aac is not None:
         aac.close()

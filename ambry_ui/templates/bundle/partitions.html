@@ -4,12 +4,18 @@
     #partition-list th:first-child{
         width: 10em;
     }
-    td.col-name {
-        min-width: 25em;
+    .col-name {
+        min-width: 50em;
     }
-    td.table-name {
-        width: 10em;
+
+    .col-dl {
+        width: 8em;
     }
+
+    .partition-entry h2 {
+        font-size: 110%;
+    }
+
 {%  endblock %}
 {% block body %}
 
@@ -29,19 +35,21 @@
     <table id='partition-list' class="table table-striped table-bordered table-condensed">
         <tr>
 
-            <th style="width: 20em;">Name</th>
+            <th class="col-name">About</th>
+            <th class="col-time">Time</th>
+            <th class="col-space">Space</th>
+            <th class="col-dl">Download</th>
 
-            <th>Description</th>
-            <th>Download</th>
-
-            {% if w %}<th>Installed</th>{% endif %}
         </tr>
         {% for p in b.partitions|sort(attribute='identity.name') -%}
         <tr>
-            <td class="col-name"><a href="{{url_for('get_partition',pvid=p.vid)}}">{{p.name}}</a><br/>
-            <small>{{p.vid}}</small></td>
-            <td>{{p.description}}<br/><small>{{ p.sub_description }}. {{ p.count }} Rows.</small></td>
-            <td >
+            <td class="col-name">
+                <a href="{{url_for('get_partition',pvid=p.vid)}}">{{p.display.title}}</a><br/>
+                <small>{{ p.count }} Rows.</small>
+            </td>
+            <td>{{  p.display.time_description }}</td>
+            <td>{{  p.display.geo_description }}</td>
+            <td class="col-dl">
                 {%  if show_download %}
                 <a class="btn btn-primary btn-sm" href="{{url_for('stream_file', pvid=p.vname, ct='csv')}}">CSV</a>
                 {% else %}

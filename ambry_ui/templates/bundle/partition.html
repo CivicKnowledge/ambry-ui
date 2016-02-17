@@ -7,17 +7,18 @@
 {% block json_button %}
     {{ json_button('partition_json', vid=p.vid) }}
 {% endblock %}
-{% block masthead %}{{p.vname}}{% endblock %}
+{% block masthead %}{{p.display.title}}{% endblock %}
 {% block pageheader %}
     <div class="row page-header">
         <div class="col-md-7">
-            <div class="summary">{{ p.description }}. {{ p.sub_description }}. {{ p.count }} Rows.</div>
+
+            <div class="summary">{{ p.display.description }} </div>
             <div>
                 {% if b.metadata.about.access == 'public' or current_user.is_authenticated %}
                  <a class="btn btn-primary btn-sm" href="{{url_for('stream_file', pvid=p.vname, ct='csv')}}">CSV</a>
                 {% endif %}
                 From: <a href="{{url_for('bundle_main',vid=p.dataset.vid)}}">{{p.dataset.fqname}}</a>.
-                Table: {{p.table.name}}.
+                {{ p.sub_description }}
 
             </div>
         </div>
@@ -78,7 +79,6 @@
                 <th>Description</th>
                 <th>Unique Values /<br/>
                     Histogram ( &mu;&plusmn;2&sigma; range )</th>
-                <th>Vid</th>
 
             </tr>
 
@@ -116,9 +116,6 @@
                     {% endif %}
 
                 </td>
-
-                <td>{%if c.sequence_id == 1 %}{{p.table.vid}}{% else %}{{c.vid}}{% endif %}</td>
-
             </tr>
             {% endfor %}
         </table>
