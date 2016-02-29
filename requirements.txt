@@ -5,6 +5,7 @@ Flask-Compress==1.2.1
 Flask==0.10.1
 Flask-Session==0.1.1
 Flask-Login
+Flask-Bootstrap
 wtforms
 Flask-WTF
 Flask-Testing

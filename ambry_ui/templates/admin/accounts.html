@@ -1,0 +1,55 @@
+{% extends "admin/layout.html" %}
+{% from 'admin/tabs.html' import tabs %}
+{% from 'macros.html' import messages %}
+{% block json_button %}
+    {{ json_button('bundle_json', vid=vid) }}
+{% endblock %}
+{% block body %}
+
+    {{tabs('accounts',vid, current_user)}}
+
+    {{messages()}}
+
+    <div class="row top-buffer">
+        <form method="POST" action="{{ url_for('admin_accounts') }}">
+            <h2>Accounts</h2>
+            <div>
+                <table class="table table-striped table-bordered table-condensed" >
+                <tr>
+                    <th>Account Id</th>
+                    <th>Account Type</th>
+                    <th>Account URL</th>
+                    <th>Access Key</th>
+                    <th>Delete</th>
+                </tr>
+                {%  for account in accounts|sort(attribute='major_type') %}
+                <tr>
+                    <td>{{ account.account_id }}</td>
+                    <td>{{ account.major_type }}</td>
+                    <td>{{ account.url }}</td>
+                    <td>{{ account.access }}</td>
+                    <td><button type="submit" class="btn btn-danger btn-small" name="delete" value="{{ account.account_id }}">
+                        <i class="glyphicon glyphicon-trash"></i>
+                        </button>
+                    </td>
+
+                </tr>
+                {%  endfor %}
+                </table>
+            </div>
+
+            <h2>Add Accounts</h2>
+            <div>
+
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <textarea rows="4" cols="60" name="config" placeholder="Cut and paste account configuration entries"></textarea>
+                <br/>
+                <input type="submit" name="submit"  value="Submit">
+            </div>
+        </form>
+    </div>
+
+
+{% endblock %}
+
+

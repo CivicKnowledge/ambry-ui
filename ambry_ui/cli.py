@@ -102,50 +102,17 @@ def start_ui(args, l, rc):
         webbrowser.open("http://{}:{}".format(args.host, args.port))
     else:
         import logging
+        import os
         logging.basicConfig(level=logging.DEBUG)
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.DEBUG)
+        os.environ["AMBRY_UI_DEBUG"] = 'true' # DOn't know why this needs to be done, but it does.
         #prt("Running at http://{}:{}".format(args.host, args.port))
 
-    # Setup remotes and accounts.
-
-    if not args.no_accounts:
-        remote = l.find_or_new_remote('localhost', service='ambry')
-        remote.url = "http://{}:{}".format(args.host, args.port)
-
-
-        # Create a local user account entry for accessing the API. This one is for the client,
-        # which knows the destination URL, so the account id has the form: http://api@localhost:8080/
-        username = 'api'
-        account_url = set_url_part(remote.url, username=username)
-        account = l.find_or_new_account(account_url, major_type='api')
-        if not account.access_key:
-            account.url = remote.url
-            account.access_key = 'api'
-            secret = random_string(20)
-            account.encrypt_secret(secret)
-        else:
-            secret = account.decrypt_secret()
-
-        # This one is for the server side, where it doesn't know the destination URL, and the
-        # account id is just the username.
-        account = l.find_or_new_account(username, major_type='api')
-        account.url = remote.url
-        account.access_key = 'api'
-        account.encrypt_secret(secret)
-
-        # This account is the admin user, which get auto logged in
-        # We just need to ensure it exists.
-        account = l.find_or_new_account('admin', major_type='user', minor_type='admin')
-        if not account.encrypted_secret:
-            account.encrypt_password(random_string(20))
-
-
-        l.commit()
-
+    if not app.config.get('AMBRY_ADMIN_PASS'):
+        app.config['AMBRY_ADMIN_PASS'] = random_string(20)
         app.config['LOGGED_IN_USER'] = 'admin'
-
-        prt('API Password: {}'.format(secret))
+        l.logger.info("Setting admin password to: {}".format(app.config['AMBRY_ADMIN_PASS'] ))
 
     db_init(args,l,rc)
 

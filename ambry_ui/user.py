@@ -7,7 +7,7 @@ the Revised BSD License, included in this distribution as LICENSE.txt
 from . import app, get_aac
 from werkzeug.local import LocalProxy
 from flask import session,  request, flash, redirect, abort, url_for
-from flask_login import login_user, logout_user
+from flask_login import login_user, logout_user, login_required, current_user
 
 aac = LocalProxy(get_aac)
 
@@ -23,15 +23,22 @@ logger = app.logger
 def load_user(user_id):
     from ambry.orm.exc import NotFoundError
 
-    try:
-        account = aac.library.account(user_id)
-    except NotFoundError:
-        logger.info("User '{}' not found  ".format(user_id))
-        return None
+    if user_id == 'admin' and 'AMBRY_ADMIN_PASS' in app.config:
+        from ambry.orm import Account
 
-    if account.major_type != 'user':
-        logger.info("User '{}' not api service type; got '{}'  ".format(user_id, account.major_type))
-        return None
+        account = Account(account_id=user_id, major_type='user', minor_type='admin')
+        account.encrypt_password(app.config['AMBRY_ADMIN_PASS'])
+
+    else:
+        try:
+            account = aac.library.account(user_id)
+        except NotFoundError:
+            logger.info("User '{}' not found  ".format(user_id))
+            return None
+
+        if account.major_type != 'user':
+            logger.info("User '{}' not api service type; got '{}'  ".format(user_id, account.major_type))
+            return None
 
     return User(account)
 
@@ -65,6 +72,11 @@ class User(object):
 
     def force_validate(self):
         self._is_authenticated = True
+
+    @property
+    def is_admin(self):
+
+        return self._account_rec.minor_type == 'admin'
 
     def is_authenticated(self):
         return self._is_authenticated
@@ -152,6 +164,168 @@ def logout():
     return redirect('/')
 
 
+@app.route('/admin')
+@login_required
+def admin_index():
+    cxt = dict(
+
+        **aac.cc
+    )
+
+    return aac.render('admin/index.html', **cxt)
+
+@app.route('/admin/accounts', methods=['GET', 'POST'])
+@login_required
+def admin_accounts():
+
+    import yaml
+    from ambry.library.config import LibraryConfigSyncProxy
+
+    if not current_user.is_admin:
+        abort(403)
+
+    if request.method == "POST":
+        if request.form['config']:
+            try:
+                d = yaml.load(request.form['config'])
+
+                if 'accounts' in d:
+                    d = d['accounts']
+
+                lcsp = LibraryConfigSyncProxy(aac.library)
+                lcsp.sync_accounts(d)
+
+                flash('Loaded {} accounts'.format(len(d)), 'success')
+
+            except Exception as e:
+                flash(str(e), 'error')
+
+        if request.form.get('delete'):
+            aac.library.delete_account(request.form['delete'])
+
+    cxt = dict(
+        accounts=[ a for a in aac.library.accounts.values() if a['major_type'] != 'user'],
+        **aac.cc
+    )
+
+    return aac.render('admin/accounts.html',  **cxt)
+
+@app.route('/admin/remotes', methods=['GET', 'POST'])
+@login_required
+def admin_remotes():
+    import yaml
+
+    from ambry.library.config import LibraryConfigSyncProxy
+
+    if not current_user.is_admin:
+        abort(403)
+
+    if request.method == "POST":
+
+        if request.form['config']:
+            try:
+
+                d = yaml.load(request.form['config'])
+
+                if 'remotes' in d:
+                    d = d['remotes']
+
+                lcsp = LibraryConfigSyncProxy(aac.library)
+                lcsp.sync_remotes(d)
+
+                flash('Loaded {} remotes'.format(len(d)), 'success')
+
+            except Exception as e:
+                flash(str(e), 'error')
+
+        if request.form.get('delete'):
+            aac.library.delete_remote(request.form['delete'])
+
+        if request.form.get('update'):
+            from ambry.orm.remote import RemoteAccessError
+            if request.form['update'] == 'all':
+                for r in aac.library.remotes:
+                    try:
+                        r.update()
+                        aac.library.commit()
+                    except RemoteAccessError as e:
+                        flash("Update Error: {}".format(e), 'error')
+
+            else:
+                r = aac.library.remote(request.form['update'])
+                try:
+                    r.update()
+                    aac.library.commit()
+                except RemoteAccessError as e:
+                    flash("Update Error: {}".format(e), 'error')
+
+        if request.form.get('install'):
+            aac.library.checkin_remote_bundle(request.form['install'])
+            b = aac.library.bundle(request.form['install'])
+            flash("Installed bundle {}".format(b.identity.vname), 'success')
+
+
+
+    cxt = dict(
+        remotes=[r for r in aac.library.remotes],
+        **aac.cc
+    )
+
+    return aac.render('admin/remotes.html', **cxt)
+
+@app.route('/admin/users', methods=['GET', 'POST'])
+@login_required
+def admin_users():
+
+    from forms import NewUserForm
+
+    if not current_user.is_admin:
+        abort(403)
+
+    new_user_form = NewUserForm()
+
+    if new_user_form.validate_on_submit():
+        account = aac.library.find_or_new_account(new_user_form.username.data)
+        account.major_type = 'user'
+        account.minor_type = new_user_form.account_type.data
+        account.encrypt_password(new_user_form.password.data)
+        aac.library.commit()
+        flash("Created new user: {}".format(new_user_form.username.data), "success")
+
+    if request.method == 'POST' and request.form.get('delete'):
+        aac.library.delete_account(request.form['delete'])
+        aac.library.commit()
+
+    else:
+        for k,v in new_user_form.errors.items():
+            flash("{}: {}".format(k, v), "error")
+
+    cxt = dict(
+        users=[a for a in aac.library.accounts.values() if a['major_type'] == 'user'],
+        new_user_form=NewUserForm(),
+        **aac.cc
+    )
+
+    return aac.render('admin/users.html', **cxt)
+
+@app.route('/admin/bundles', methods=['GET', 'POST'])
+@login_required
+def admin_bundles():
+
+    if not current_user.is_admin:
+        abort(403)
+
+    print '!!!!', request.form
+    if request.method == 'POST' and request.form.get('delete'):
+        aac.library.remove(request.form['delete'])
+        aac.library.commit()
+
+    cxt = dict(
+        bundles=[b for b in aac.library.bundles],
+        **aac.cc
+    )
+
+    return aac.render('admin/bundles.html', **cxt)
 
 
 

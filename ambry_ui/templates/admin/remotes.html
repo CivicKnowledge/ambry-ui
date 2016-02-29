@@ -1,0 +1,82 @@
+{% extends "admin/layout.html" %}
+{% from 'macros.html' import messages %}
+{% from 'admin/tabs.html' import tabs %}
+{% block json_button %}
+    {{ json_button('bundle_json', vid=vid) }}
+{% endblock %}
+{% block body %}
+
+    {{tabs('remotes',vid, current_user)}}
+
+    {{messages()}}
+
+    <h2>Remotes</h2>
+    <form method="POST" action="{{ url_for('admin_remotes') }}">
+        <div>
+        <table class="table table-striped table-bordered table-condensed" >
+        <tr>
+            <th>Name</th>
+            <th>Service</th>
+            <th>URL</th>
+            <th>Bundles</th>
+            <th>Update</th>
+            <th>Delete</th>
+        </tr>
+        {%  for r in remotes|sort(attribute='service') %}
+        <tr>
+            <td>{{ r.short_name }}</td>
+            <td>{{ r.service }}</td>
+            <td>{{ r.url }}</td>
+            <td>{{ r.bundle_count }}</td>
+            <td><button type="submit" class="btn btn-primary btn-small" name="update" value="{{ r.short_name }}">
+                Update</button>
+            </td>
+            <td><button type="submit" class="btn btn-danger btn-small" name="delete" value="{{ r.short_name }}">
+                <i class="glyphicon glyphicon-trash"></i>
+                </button>
+            </td>
+        </tr>
+        {%  endfor %}
+        </table>
+        </div>
+        <div>
+            <button type="submit" class="btn btn-primary btn-small" name="update" value="all">Update All</button>
+        </div>
+        <h2>Add Remotes</h2>
+        <div>
+
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <textarea rows="4" cols="60" name="config" placeholder="Cut and paste remote configuration entries"></textarea>
+            <br/>
+            <input type="submit" name="submit"  value="Submit">
+
+        </div>
+
+
+        <h2>Remote Bundles</h2>
+        <table class="table table-striped table-bordered table-condensed" >
+            {%  for remote in remotes %}
+                {%  if 'list' in remote.data %}
+                    {% for k, v in remote.data.list.items() %}
+                        <tr>
+                            <td>{{remote.short_name}}</td>
+                            <td>{{ v.vid }}</td>
+                            <td>{{ v.vname }}</td>
+                            <td>
+                                <button type="submit" class="btn btn-primary btn-small" name="install" value="{{ v.vid }}">
+                                    Install
+                                </button>
+                            </td>
+                        </tr>
+
+                    {%  endfor %}
+                {%  endif %}
+            {%  endfor %}
+        </table>
+
+    </form>
+
+
+{% endblock %}
+
+

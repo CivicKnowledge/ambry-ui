@@ -1,0 +1,24 @@
+{% macro is_active(this_tab, active) -%}
+    {%  if this_tab == active %}active{%endif%}
+{% endmacro -%}
+
+{% macro tabs(active, vid, current_user) -%}
+    <!-- Tab panes -->
+
+    <div class="nav">
+        <ul class="nav nav-tabs">
+            <li role="presentation" class="{{is_active('index',active)}}">
+                <a href="{{ url_for('admin_index') }}" >About</a></li>
+            {% if current_user.is_admin %}
+                <li role="presentation" class="{{is_active('accounts',active)}}">
+                    <a href="{{ url_for('admin_accounts') }}" >Accounts</a></li>
+                <li role="presentation" class="{{is_active('remotes',active)}}">
+                    <a href="{{ url_for('admin_remotes') }}" >Remotes</a></li>
+                <li role="presentation" class="{{is_active('users',active)}}">
+                    <a href="{{ url_for('admin_users') }}" >Users</a></li>
+                <li role="presentation" class="{{is_active('bundles',active)}}">
+                    <a href="{{ url_for('admin_bundles') }}" >Bundles</a></li>
+            {%  endif  %}
+        </ul>
+    </div>
+{%  endmacro %}

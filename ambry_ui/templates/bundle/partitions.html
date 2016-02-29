@@ -45,7 +45,7 @@
         <tr>
             <td class="col-name">
                 <a href="{{url_for('get_partition',pvid=p.vid)}}">{{p.display.title}}</a><br/>
-                <small>{{ p.count }} Rows.</small>
+                <small>{{ p.name}}, {{ p.count }} Rows.</small>
             </td>
             <td>{{  p.display.time_description }}</td>
             <td>{{  p.display.geo_description }}</td>

@@ -46,6 +46,7 @@ class ItsdangerousSessionInterface(SessionInterface):
                                    domain=domain)
             return
         expires = self.get_expiration_time(app, session)
+
         val = self.get_serializer(app).dumps(dict(session))
         response.set_cookie(app.session_cookie_name, val,
                             expires=expires, httponly=True,

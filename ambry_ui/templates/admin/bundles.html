@@ -1,0 +1,49 @@
+{% extends "admin/layout.html" %}
+{% from 'admin/tabs.html' import tabs %}
+{% from 'macros.html' import messages %}
+{% block json_button %}
+    {{ json_button('bundle_json', vid=vid) }}
+{% endblock %}
+{% block body %}
+
+    {{tabs('bundles',vid, current_user)}}
+
+    {{messages()}}
+
+    <h2>Bundles</h2>
+
+    <div class="row top-buffer">
+        <div class = "row">
+            <form method="POST" action="{{ url_for('admin_bundles') }}">
+                <table class="table table-hover table-condensed" >
+                <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th class="toc_name">Name</th>
+                    <th>Delete</th>
+                </tr>
+                {% for b in bundles|sort(attribute="identity.vname") -%}
+                    <tr class="bundle_toc">
+                        <td class="toc_n">{{loop.index}}</td>
+                        <td class="toc_title"><a href="{{url_for('bundle_main',vid=b.identity.vid)}}">{{b.metadata.about.title or ''}}</a><br/>
+                            <small>{{(b.metadata.about.summary or '')|truncate(length=300)}}</small>
+                        </td>
+                        <td class="toc_name">{{b.identity.name}}<br/>
+                            <small>{{b.identity.vid}} {{b.dstate}}</small>
+                        </td>
+                        <td><button type="submit" class="btn btn-danger btn-small" name="delete" value="{{ b.identity.vid }}">
+                            <i class="glyphicon glyphicon-trash"></i>
+                            </button>
+                        </td>
+
+                    </tr>
+                {% endfor %}
+                </table>
+            </form>
+        </div>
+    </div>
+
+
+{% endblock %}
+
+

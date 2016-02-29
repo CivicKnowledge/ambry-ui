@@ -12,6 +12,7 @@ from flask import Response, url_for, session
 from flask.json import JSONEncoder as FlaskJSONEncoder
 from flask.json import dumps
 from flask_login import LoginManager
+from flask_bootstrap import Bootstrap
 from flask_wtf.csrf import CsrfProtect
 from session import ItsdangerousSessionInterface
 
@@ -32,6 +33,7 @@ app_config = {
     'WTF_CSRF_CHECK_DEFAULT': False,  # Turn off CSRF by default. Must enable on specific views.
 
     'SECRET_KEY': os.getenv('AMBRY_UI_SECRET'),
+    'AMBRY_ADMIN_PASS': os.getenv('AMBRY_ADMIN_PASS'), # Override the admin user password
     'WTF_CSRF_SECRET_KEY': os.getenv('AMBRY_UI_CSRF_SECRET', os.getenv('AMBRY_UI_SECRET')),
     'website_title': os.getenv('AMBRY_UI_TITLE', "Ambry Data Library"),
 
@@ -42,7 +44,6 @@ app_config = {
 class JSONEncoder(FlaskJSONEncoder):
     def default(self, o):
         return str(type(o))
-
 
 
 class AmbryAppContext(object):
@@ -74,7 +75,18 @@ class AmbryAppContext(object):
         from __meta__ import __version__ as ui_version
         from flask import request
 
+        def scale_font(x):
+            """Scales the font for the partition title. Completely ad-hoc."""
+
+            size = 100
+
+            if len(x) > 130:
+                size = 90
+
+            return 'font-size: {}%;'.format(size)
+
         return {
+            'scale_font': scale_font,
             'ambry_version': ambry_version,
             'ui_version': ui_version,
             'url_for': url_for,
@@ -117,7 +129,6 @@ class Application(Flask):
     def __init__(self, app_config, import_name, static_path=None, static_url_path=None, static_folder='static',
                  template_folder='templates', instance_path=None, instance_relative_config=False):
 
-        self._app_config = app_config
         self._initialized = False
         self.csrf = CsrfProtect()
         self.login_manager = LoginManager()
@@ -125,28 +136,33 @@ class Application(Flask):
         super(Application, self).__init__(import_name, static_path, static_url_path, static_folder,
                                           template_folder, instance_path, instance_relative_config)
 
+        self.config.update(app_config)
+
     def __call__(self, environ, start_response):
 
         if not self._initialized:
-            if not app_config['SECRET_KEY']:
-                app.logger.error("SECRET_KEY was not set. Setting to an insecure value")
-                app_config['SECRET_KEY'] = 'secret'  # Must be the same for all worker processes.
 
-            if not app_config['WTF_CSRF_SECRET_KEY']:
-                app_config['WTF_CSRF_SECRET_KEY'] = app_config['SECRET_KEY']
+            if not self.config['SECRET_KEY']:
+                from uuid import uuid4
+                app.logger.warn("SECRET_KEY was not set. Setting to a random value")
+                self.config['SECRET_KEY'] = str(uuid4()) # Must be the same for all worker processes.
 
-            self.config.update(self._app_config)
-            self.secret_key = app.config['SECRET_KEY']
+            if not self.config['WTF_CSRF_SECRET_KEY']:
+                self.config['WTF_CSRF_SECRET_KEY'] = self.config['SECRET_KEY']
+
+            self.secret_key = self.config['SECRET_KEY']
 
             self.csrf.init_app(self)
 
             self.session_interface = ItsdangerousSessionInterface()
 
             self.login_manager.init_app(app)
+            Bootstrap(app)
 
             self._initialized = True
 
         return super(Application, self).__call__(environ, start_response)
+
 
 app = Application(app_config, __name__)
 

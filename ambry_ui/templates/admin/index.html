@@ -1,0 +1,13 @@
+{% extends "admin/layout.html" %}
+{% from 'admin/tabs.html' import tabs %}
+{% block json_button %}
+    {{ json_button('bundle_json', vid=vid) }}
+{% endblock %}
+{% block body %}
+
+    {{tabs('index',vid, current_user)}}
+
+
+{% endblock %}
+
+

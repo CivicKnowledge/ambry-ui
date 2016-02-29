@@ -7,12 +7,16 @@
 {% block json_button %}
     {{ json_button('partition_json', vid=p.vid) }}
 {% endblock %}
-{% block masthead %}{{p.display.title}}{% endblock %}
+{% block masthead %}
+    <span style="{{scale_font(p.display.title)}}">
+        {{p.display.title}}
+    </span>
+{% endblock %}
 {% block pageheader %}
     <div class="row page-header">
         <div class="col-md-7">
 
-            <div class="summary">{{ p.display.description }} </div>
+            <div class="summary">{{ p.display.description }} {{ p.display.sub_description }}</div>
             <div>
                 {% if b.metadata.about.access == 'public' or current_user.is_authenticated %}
                  <a class="btn btn-primary btn-sm" href="{{url_for('stream_file', pvid=p.vname, ct='csv')}}">CSV</a>
@@ -42,8 +46,8 @@
     }
 {%  endblock %}
 {% block body %}
-<div>
 
+<div>
     <div>
 
         {% if docs %}
@@ -88,7 +92,7 @@
                 <td>{{c.name}}</td>
                 <td>{{p.stats_dict[c.name].lom}}</td>
                 <td>{{c.datatype}}</td>
-                <td>{{c.description}}</td>
+                <td>{{c.description|default('', true)}}</td>
                 <td >
                     {%  if p.stats_dict[c.name].lom in ('o','n') %}
                         <a tabindex = "0"

@@ -26,12 +26,14 @@
             </a>
             </div>
 
-            <p class="navbar-text" >
+            <p class="navbar-text col-md-8" >
                 {% block masthead %} {% endblock %}
             </p>
             <p class="navbar-text navbar-right">
                 {% if current_user.is_authenticated %}
-                    {{ current_user.name }} ( <a href="{{ url_for('logout')}}">Logout</a> )
+
+                    <a href="{{ url_for('admin_index')}}">{{ current_user.name }}</a>
+                    ( <a href="{{ url_for('logout')}}">Logout</a> )
                 {% else %}
                     {% if autologin_user %}
                         <a href="{{ url_for('autologin')}}"  class="navbar-link ">Auto Login</a>
@@ -47,7 +49,7 @@
 
     <div class="container">
         <div class="row">
-            <div class="col-md-12 pull-right">
+            <div class="col-md-12 pull-right top-buffer">
                 <div>
                     {% block pageheader %} {% endblock %}
                     {% block body %} {% endblock %}

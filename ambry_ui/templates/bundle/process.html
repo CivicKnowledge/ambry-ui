@@ -56,9 +56,7 @@
         {%  for pr in exceptions %}
             <h3>{{ pr }}</h3>
             <pre>
-                {% for l in pr.exception_trace %}
-                {{ l }}
-                {% endfor %}
+                {{ pr.exception_trace}}
             </pre>
         {%  endfor %}
         </table>
