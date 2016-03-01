@@ -28,6 +28,7 @@ def load_user(user_id):
 
         account = Account(account_id=user_id, major_type='user', minor_type='admin')
         account.encrypt_password(app.config['AMBRY_ADMIN_PASS'])
+        logger.info("Got configured password; using fake admin account".format(user_id))
 
     else:
         try:
@@ -69,6 +70,7 @@ class User(object):
 
     def validate(self, password):
         self._is_authenticated = self._account_rec.test(password)
+        return self._is_authenticated
 
     def force_validate(self):
         self._is_authenticated = True
@@ -118,7 +120,6 @@ def login():
     username = request.form.get('username')
     password = request.form.get('password')
 
-    logger.info("login for '{}'".format(username))
 
     error = None
     if form.validate_on_submit():
@@ -131,18 +132,20 @@ def login():
             logger.info("No user '{}'".format(username))
             return abort(403)
 
-        user.validate(password)
+        if user.validate(password):
 
-        login_user(user)
+            login_user(user)
 
-        if not next[0] == '/':
-            return abort(400)
+            if not next[0] == '/':
+                logger.info("Login failed; bad next url parameter'{}'".format(next[0]))
+                return abort(400)
 
-        return redirect(next)
-    else:
-        logger.info("Login form failed to validate: {}".format(form.errors))
-        logger.info(request.form)
-        error = 'Invalid username or password'
+            logger.info("Successful login  for '{}'".format(username))
+            return redirect(next)
+
+    logger.info("Login form failed to validate: {}".format(form.errors))
+    logger.info(request.form)
+    error = 'Invalid username or password'
 
     return aac.render('login.html', error=error, request_count= session['request_count'], **cxt)
 

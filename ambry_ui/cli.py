@@ -109,7 +109,7 @@ def start_ui(args, l, rc):
         os.environ["AMBRY_UI_DEBUG"] = 'true' # DOn't know why this needs to be done, but it does.
         #prt("Running at http://{}:{}".format(args.host, args.port))
 
-    if not app.config.get('AMBRY_ADMIN_PASS'):
+    if not app.config.get('AMBRY_ADMIN_PASS') and not args.no_accounts:
         app.config['AMBRY_ADMIN_PASS'] = random_string(20)
         app.config['LOGGED_IN_USER'] = 'admin'
         l.logger.info("Setting admin password to: {}".format(app.config['AMBRY_ADMIN_PASS'] ))
