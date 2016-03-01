@@ -144,7 +144,7 @@ def login():
         logger.info(request.form)
         error = 'Invalid username or password'
 
-    return aac.renderer.render('login.html', error=error, request_count= session['request_count'], **cxt)
+    return aac.render('login.html', error=error, request_count= session['request_count'], **cxt)
 
 @app.route('/autologin', methods=['GET'])
 def autologin():
