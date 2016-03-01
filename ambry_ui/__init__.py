@@ -33,12 +33,14 @@ app_config = {
     'WTF_CSRF_CHECK_DEFAULT': False,  # Turn off CSRF by default. Must enable on specific views.
 
     'SECRET_KEY': os.getenv('AMBRY_UI_SECRET'),
-    'AMBRY_ADMIN_PASS': os.getenv('AMBRY_ADMIN_PASS'), # Override the admin user password
     'WTF_CSRF_SECRET_KEY': os.getenv('AMBRY_UI_CSRF_SECRET', os.getenv('AMBRY_UI_SECRET')),
     'website_title': os.getenv('AMBRY_UI_TITLE', "Ambry Data Library"),
 
     'LOGGED_IN_USER': None,  # Name of user to auto-login
 }
+
+if os.getenv('AMBRY_ADMIN_PASS'):
+    app_config['AMBRY_ADMIN_PASS'] ==os.getenv('AMBRY_ADMIN_PASS')
 
 
 class JSONEncoder(FlaskJSONEncoder):
