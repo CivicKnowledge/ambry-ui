@@ -15,8 +15,8 @@ import logging
 
 logger = app.logger
 
-#logger = logging.getLogger('gunicorn.access')
-#logger.setLevel(logging.DEBUG)
+logger = logging.getLogger('gunicorn.access')
+logger.setLevel(logging.DEBUG)
 
 
 @app.login_manager.user_loader
@@ -267,8 +267,6 @@ def admin_remotes():
             b = aac.library.bundle(request.form['install'])
             flash("Installed bundle {}".format(b.identity.vname), 'success')
 
-
-
     cxt = dict(
         remotes=[r for r in aac.library.remotes],
         **aac.cc
@@ -318,7 +316,6 @@ def admin_bundles():
     if not current_user.is_admin:
         abort(403)
 
-    print '!!!!', request.form
     if request.method == 'POST' and request.form.get('delete'):
         aac.library.remove(request.form['delete'])
         aac.library.commit()

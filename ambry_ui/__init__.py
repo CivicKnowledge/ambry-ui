@@ -32,9 +32,7 @@ app_config = {
     'SESSION_TYPE': 'filesystem',
     'WTF_CSRF_CHECK_DEFAULT': False,  # Turn off CSRF by default. Must enable on specific views.
 
-    'SECRET_KEY': os.getenv('AMBRY_UI_SECRET'),
     'WTF_CSRF_SECRET_KEY': os.getenv('AMBRY_UI_CSRF_SECRET', os.getenv('AMBRY_UI_SECRET')),
-    'website_title': os.getenv('AMBRY_UI_TITLE', "Ambry Data Library"),
 
     'LOGGED_IN_USER': None,  # Name of user to auto-login
 }
@@ -143,16 +141,40 @@ class Application(Flask):
     def __call__(self, environ, start_response):
 
         if not self._initialized:
+            from ambry.library import Library
+            from ambry.run import get_runconfig
 
-            if not self.config['SECRET_KEY']:
+            rc = get_runconfig()
+            l = Library(rc, read_only=True, echo=False)
+
+            secret_key = None
+
+            if os.getenv('AMBRY_UI_SECRET'):
+                app.logger.info("Using secret_key from env")
+                secret_key = os.getenv('AMBRY_UI_SECRET')
+
+            if not secret_key and l.ui_config.secret:
+                app.logger.info("Using secret_key from library")
+                secret_key = l.ui_config.secret
+
+            if not secret_key:
                 from uuid import uuid4
                 app.logger.warn("SECRET_KEY was not set. Setting to a random value")
-                self.config['SECRET_KEY'] = str(uuid4()) # Must be the same for all worker processes.
+                secret_key = str(uuid4()) # Must be the same for all worker processes.
 
             if not self.config['WTF_CSRF_SECRET_KEY']:
                 self.config['WTF_CSRF_SECRET_KEY'] = self.config['SECRET_KEY']
 
-            self.secret_key = self.config['SECRET_KEY']
+
+
+            title = os.getenv('AMBRY_UI_TITLE', "Ambry Data Library"),
+
+            if l.ui_config.website_title:
+                title = l.ui_config.website_title
+
+            self.config['website_title'] = title
+
+            self.secret_key = secret_key
 
             self.csrf.init_app(self)
 
@@ -167,7 +189,6 @@ class Application(Flask):
 
 
 app = Application(app_config, __name__)
-
 
 @app.teardown_appcontext
 def close_connection(exception):
