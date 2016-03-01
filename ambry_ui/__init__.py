@@ -163,9 +163,9 @@ class Application(Flask):
                 secret_key = str(uuid4()) # Must be the same for all worker processes.
 
             if not self.config['WTF_CSRF_SECRET_KEY']:
-                self.config['WTF_CSRF_SECRET_KEY'] = self.config['SECRET_KEY']
+                self.config['WTF_CSRF_SECRET_KEY'] = secret_key
 
-
+            self.config['SECRET_KEY'] = secret_key
 
             title = os.getenv('AMBRY_UI_TITLE', "Ambry Data Library"),
 
