@@ -22,7 +22,7 @@ class LoginForm(Form):
 class NewUserForm(Form):
     username = StringField('Name', validators=[DataRequired(), validators.Length(min=3, max=25)])
     password = PasswordField('Password', validators=[DataRequired(), validators.Length(min=6, max=25)])
-    account_type = RadioField(choices=[('admin','admin'),('user','user')], default='user')
+    account_type = RadioField(choices=[('admin','admin'),('user','user'), ('api','api')], default='user')
 
 class LibraryConfigForm(Form):
     library_name = StringField('Library Name', validators=[DataRequired(), validators.Length(min=3, max=25)])

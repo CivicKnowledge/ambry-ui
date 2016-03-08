@@ -289,7 +289,10 @@ def admin_users():
         account = aac.library.find_or_new_account(new_user_form.username.data)
         account.major_type = 'user'
         account.minor_type = new_user_form.account_type.data
-        account.encrypt_password(new_user_form.password.data)
+        if account.minor_type == 'api':
+            account.encrypt_secret(new_user_form.password.data)
+        else:
+            account.encrypt_password(new_user_form.password.data)
         aac.library.commit()
         flash("Created new user: {}".format(new_user_form.username.data), "success")
 
