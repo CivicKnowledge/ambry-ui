@@ -177,8 +177,6 @@ def proc_account(a):
 @jwt_required
 def config_accounts_get():
 
-    r = aac.renderer
-
     return aac.json(
         accounts={ k:proc_account(a) for k, a in aac.library.accounts.items()}
     )
@@ -188,7 +186,6 @@ def config_accounts_get():
 @jwt_required
 def config_accounts_put():
     from ambry.orm.account import AccountDecryptionError, MissingPasswordError
-    r = aac.renderer
 
     from ambry.library.config import LibraryConfigSyncProxy
 
@@ -241,7 +238,7 @@ def bundle_delete(ref):
 def bundle_build_files(vid):
     """Returns the file records, excluding the content"""
 
-    r = aac.renderer
+
 
     b = aac.library.bundle(vid)
 
@@ -259,7 +256,6 @@ def bundle_build_files(vid):
 def bundle_build_file(vid, name):
     """Returns the file records, excluding the content"""
 
-    r = aac.renderer
 
     b = aac.library.bundle(vid)
 
@@ -281,7 +277,7 @@ def bundle_build_file(vid, name):
 def bundle_build_files_get(vid, name):
     from flask import Response
 
-    r = aac.renderer
+    
     b = aac.library.bundle(vid)
 
     try:
@@ -296,7 +292,7 @@ def bundle_build_files_get(vid, name):
 @app.route('/bundles/<vid>/build/files/<name>/content', methods = ['PUT'])
 @jwt_required
 def bundle_build_files_put(vid, name):
-    r = aac.renderer
+    
     b = aac.library.bundle(vid)
 
     try:
@@ -318,7 +314,7 @@ def bundle_build_checkin_post(vid):
     """Checkin a bundle to this library, as a sqlite file"""
     from ambry.util.flo import copy_file_or_flo
     import tempfile
-    r = aac.renderer
+    
 
     fh, path = tempfile.mkstemp()
     os.fdopen(fh).close()
