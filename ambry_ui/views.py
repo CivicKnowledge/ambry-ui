@@ -13,7 +13,7 @@ aac = LocalProxy(get_aac)
 
 @app.errorhandler(500)
 def page_not_found(e):
-    return aac.render('500.html', e=e)
+    return aac.render('500.html', e=e), 500
 
 
 @app.route('/')

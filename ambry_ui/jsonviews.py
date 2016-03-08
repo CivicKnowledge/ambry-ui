@@ -11,7 +11,6 @@ aac = LocalProxy(get_aac)
 
 @app.route('/json')
 def bundle_index_json():
-    r = aac.renderer
 
     def augment(b):
         o = b.dataset.dict
@@ -23,15 +22,13 @@ def bundle_index_json():
         b.close()
         return o
 
-    return r.json(
-        bundles=[augment(b) for b in r.library.bundles]
+    return aac.json(
+        bundles=[augment(b) for b in aac.library.bundles]
 
     )
 
 @app.route('/json/bundle/<vid>')
 def bundle_json(vid):
-
-    r = aac.renderer
 
     b = aac.bundle(vid)
 
@@ -49,7 +46,7 @@ def bundle_json(vid):
         o['csv_url'] = url_for('stream_file', pvid=o['vid'], ct='csv')
         o['details_url'] = url_for('partition_json', vid=o['vid'])
         o['description'] = p.table.description
-        o['sub_description'] = p.sub_description
+        o['sub_description'] = p.display.sub_description
         return o
 
     def partitions():
@@ -60,7 +57,7 @@ def bundle_json(vid):
             yield p
 
     b.close()
-    return r.json(
+    return aac.json(
         dataset=aug_dataset(b),
         partitions = [ aug_partition(p.dict) for p in partitions() ]
 
@@ -70,9 +67,7 @@ def bundle_json(vid):
 @app.route('/json/partition/<vid>')
 def partition_json(vid):
 
-    r = aac.renderer
-
-    p = r.library.partition(vid)
+    p = aac.library.partition(vid)
 
     d = p.dict
     d['csv_url'] = url_for('stream_file', pvid=p.vid, ct='csv')
@@ -87,7 +82,7 @@ def partition_json(vid):
 
     d['table'] = p.table.dict
     d['table']['columns'] = [ aug_col(c) for c in p.table.columns ]
-    return r.json(
+    return aac.json(
         partition = d
 
     )

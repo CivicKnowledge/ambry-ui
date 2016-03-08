@@ -49,6 +49,8 @@ def jwt_auth():
         app.logger.info("User '{}' not api service type; got '{}'  ".format(user, account.major_type))
         abort(400)
 
+    assert account.secret
+
     try:
         claims = jwt.decode(token, account.secret, algorithms='HS256')
     except jwt.JWTError:
@@ -87,11 +89,9 @@ def jwt_required(fn):
 @jwt_required
 def test_get():
 
-    r = aac.renderer
-
     content = request.get_json(silent=True)
 
-    return r.json(**content)
+    return aac.json(**content)
 
 #
 # Administration Interfaces
@@ -102,11 +102,11 @@ def resolve_get(ref):
     """Return remotes configured on the Library"""
     from ambry.orm.exc import NotFoundError
 
-    r = aac.renderer
+
     d = None
 
     try:
-        p = r.library.partition(ref)
+        p = aac.library.partition(ref)
         d = p.dict
         d['_type'] = 'partition'
         d['description'] = p.description
@@ -115,19 +115,19 @@ def resolve_get(ref):
         b = p._bundle.dataset.dict
         b['title'] = p._bundle.metadata.about.title
         b['summary'] = p._bundle.metadata.about.summary
-        return r.json(partition=d, bundle=b)
+        return aac.json(partition=d, bundle=b)
 
     except NotFoundError:
         pass
 
     try:
-        b = r.library.bundle(ref)
+        b = aac.library.bundle(ref)
         d = b.dataset.dict
         d['_type'] = 'bundle'
         d['title'] = b.metadata.about.title
         d['summary'] = b.metadata.about.summary
 
-        return r.json(
+        return aac.json(
             bundle=d
         )
     except:
@@ -139,17 +139,17 @@ def resolve_get(ref):
 @jwt_required
 def config_remotes_get():
     """Return remotes configured on the Library"""
-    r = aac.renderer
+    
 
-    return r.json(
-        remotes=[ rmt.dict for rmt in r.library.remotes]
+    return aac.json(
+        remotes=[ rmt.dict for rmt in aac.library.remotes]
     )
 
 @app.route('/config/remotes', methods = ['PUT'])
 @jwt_required
 def config_remotes_put():
     """Replace all of the remotes in the library with new ones"""
-    r = aac.renderer
+    
     l = aac.library
 
     for r_d in request.get_json():
@@ -161,8 +161,8 @@ def config_remotes_put():
 
     l.commit()
 
-    return r.json(
-        remotes=[ rmt.dict for rmt in r.library.remotes]
+    return aac.json(
+        remotes=[ rmt.dict for rmt in aac.library.remotes]
     )
 
 
@@ -179,8 +179,8 @@ def config_accounts_get():
 
     r = aac.renderer
 
-    return r.json(
-        accounts={ k:proc_account(a) for k, a in r.library.accounts.items()}
+    return aac.json(
+        accounts={ k:proc_account(a) for k, a in aac.library.accounts.items()}
     )
 
 
@@ -192,9 +192,9 @@ def config_accounts_put():
 
     from ambry.library.config import LibraryConfigSyncProxy
 
-    l = r.library
+    l = aac.library
 
-    lsp = LibraryConfigSyncProxy(r.library)
+    lsp = LibraryConfigSyncProxy(aac.library)
 
     try:
 
@@ -207,8 +207,8 @@ def config_accounts_put():
         abort(400)
 
 
-    return r.json(
-        accounts={k: proc_account(a) for k, a in r.library.accounts.items()}
+    return aac.json(
+        accounts={k: proc_account(a) for k, a in aac.library.accounts.items()}
     )
 
 @app.route('/config/services', methods = ['PUT'])
@@ -243,14 +243,14 @@ def bundle_build_files(vid):
 
     r = aac.renderer
 
-    b = r.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
     def make_dict(f):
         d = f.record.dict
         del d['modified_datetime']
         return d
 
-    return r.json(
+    return aac.json(
         files=[ make_dict(f) for f in b.build_source_files ]
     )
 
@@ -261,7 +261,7 @@ def bundle_build_file(vid, name):
 
     r = aac.renderer
 
-    b = r.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
     try:
         fs = b.build_source_files.file(name)
@@ -273,7 +273,7 @@ def bundle_build_file(vid, name):
         del d['modified_datetime']
         return d
 
-    return r.json(file= make_dict(fs))
+    return aac.json(file= make_dict(fs))
 
 
 @app.route('/bundles/<vid>/build/files/<name>/content', methods = ['GET'])
@@ -282,7 +282,7 @@ def bundle_build_files_get(vid, name):
     from flask import Response
 
     r = aac.renderer
-    b = r.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
     try:
         fs = b.build_source_files.file(name)
@@ -297,7 +297,7 @@ def bundle_build_files_get(vid, name):
 @jwt_required
 def bundle_build_files_put(vid, name):
     r = aac.renderer
-    b = r.library.bundle(vid)
+    b = aac.library.bundle(vid)
 
     try:
         fs = b.build_source_files.file(name)
@@ -308,7 +308,7 @@ def bundle_build_files_put(vid, name):
 
     fs.setcontent(request.content)
 
-    return r.json(
+    return aac.json(
         file=fs.record.dict
     )
 
@@ -329,9 +329,9 @@ def bundle_build_checkin_post(vid):
     def cb(message, number):
         print message, number
 
-    r.library.checkin_bundle(path, cb)
+    aac.library.checkin_bundle(path, cb)
 
-    return r.json(
+    return aac.json(
         result='ok'
     )
 

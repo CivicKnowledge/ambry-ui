@@ -42,6 +42,7 @@ class MyTestCase(TestCase):
         self.setup_user()
 
         r = self.client.get('/json')
+
         self.assert200(r)
 
         headers = Headers()
@@ -52,7 +53,8 @@ class MyTestCase(TestCase):
                              content_type='application/json',
                              data=json.dumps(dict(foo='bar')))
         self.assert200(r)
-        self.assertEqual('bar',r.json['content']['foo'])
+
+        self.assertEqual('bar',r.json['foo'])
 
 if __name__ == '__main__':
     unittest.main()
