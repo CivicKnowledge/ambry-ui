@@ -27,7 +27,7 @@
             <td>{{ r.short_name }}</td>
             <td>{{ r.service }}</td>
             <td>{{ r.url }}</td>
-            <td>{{ r.bundle_count }}</td>
+            <td>{{ r.data.list|length }}</td>
             <td><button type="submit" class="btn btn-primary btn-small" name="update" value="{{ r.short_name }}">
                 Update</button>
             </td>
