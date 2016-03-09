@@ -266,10 +266,9 @@ def stream_csv(pvid):
 
     p = aac.library.partition(pvid)
 
-    if p.is_local:
-        reader = p.reader
-    else:
-        reader = p.remote_datafile.reader
+    p.localize()
+
+    reader = p.reader
 
     def yield_csv_row(w, b, row):
         w.writerow(row)
@@ -299,10 +298,9 @@ def stream_mpack(pvid):
 
     p = aac.library.partition(pvid)
 
-    if p.is_local:
-        reader = p.reader
-    else:
-        reader = p.remote_datafile.reader
+    p.localize()
+
+    reader = p.reader
 
     def stream_msgp():
         yield msgpack.packb(reader.headers)
