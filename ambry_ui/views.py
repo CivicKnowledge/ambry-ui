@@ -8,8 +8,11 @@ import os
 from . import app, get_aac
 from flask import g, current_app, send_from_directory, send_file, request, abort, url_for
 from werkzeug.local import LocalProxy
+import logging
 
 aac = LocalProxy(get_aac)
+
+app.logger.setLevel(logging.DEBUG)
 
 @app.errorhandler(500)
 def page_not_found(e):
@@ -239,7 +242,8 @@ def stream_file(pvid, ct):
 
     try:
         p = aac.library.partition(pvid)
-    except NotFoundError:
+    except NotFoundError as e:
+        app.logger.error("Stream file: failed to find partition: {}".format(e))
         return abort(404)
 
     if p.bundle.metadata.about.access != 'public' and not current_user.is_authenticated:
@@ -253,7 +257,8 @@ def stream_file(pvid, ct):
             return stream_csv(pvid)
         elif ct == 'mpack':
             return stream_mpack(pvid)
-    except NotFoundError:
+    except NotFoundError as e:
+        app.logger.error("Stream file: failed to get file: {}".format(e))
         pass
 
     return abort(404)

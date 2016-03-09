@@ -256,7 +256,6 @@ def bundle_build_files(vid):
 def bundle_build_file(vid, name):
     """Returns the file records, excluding the content"""
 
-
     b = aac.library.bundle(vid)
 
     try:
