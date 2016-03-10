@@ -12,6 +12,7 @@
         {{p.display.title}}
     </span>
 {% endblock %}
+
 {% block pageheader %}
     <div class="row page-header">
         <div class="col-md-7">
@@ -43,6 +44,9 @@
 {% block page_css %}
     .popover {
         min-width: 40%;
+    }
+    #valuetype-col{
+        width: 10em;
     }
 {%  endblock %}
 {% block body %}
@@ -78,8 +82,7 @@
             <tr>
                 <th>#</th>
                 <th>Column</th>
-                <th>LOM</th>
-                <th>Type</th>
+                <th id="valuetype-col">Data Type</th>
                 <th>Description</th>
                 <th>Unique Values /<br/>
                     Histogram ( &mu;&plusmn;2&sigma; range )</th>
@@ -90,17 +93,16 @@
             <tr>
                 <td>{{c.sequence_id}}</td>
                 <td>{{c.name}}</td>
-                <td>{{p.stats_dict[c.name].lom}}</td>
-                <td>{{c.datatype}}</td>
+                <td>{{c.valuetype_description}}<br/><small>{{c.role_description}}, {{c.datatype}}</small></td>
                 <td>{{c.description|default('', true)}}</td>
                 <td >
-                    {%  if p.stats_dict[c.name].lom in ('o','n') %}
+                    {%  if c.role == 'd' %}
                         <a tabindex = "0"
                         data-toggle="popover" data-placement="left" data-trigger="hover"
                         data-title="Selected Values"
                         data-content="{{ p.stats_dict[c.name].uvalues|join(', ') }}" >
                         {{p.stats_dict[c.name].nuniques}} Uniques </a>
-                    {% else %}
+                    {% elif c.role == 'm' %}
                         <div><span class="histospark">
                         {% for e in p.stats_dict[c.name].hist %}{{e}},{% endfor %}
                         </span></div>

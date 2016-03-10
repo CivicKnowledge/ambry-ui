@@ -87,18 +87,14 @@ def bundle_file(vid, name):
     from ambry.orm.file import File
     from contextlib import closing
 
-    m = {v: k for k, v in File.path_map.items()}
-
     b = aac.library.bundle(vid)
 
-    bs = b.build_source_files.file(m[name])
+    bs = b.build_source_files.instance_from_name(name)
 
-    sio = StringIO()
-
-    bs.record_to_fh(sio)
-
-    with closing(sio):
-        return send_file(StringIO(sio.getvalue()))
+    return send_file(bs.get_string_io(),
+                     cache_timeout=0,
+                     as_attachment=True,
+                     attachment_filename = b.identity.vname+'-'+name)
 
 
 @app.route('/bundles/<vid>/notebooks')

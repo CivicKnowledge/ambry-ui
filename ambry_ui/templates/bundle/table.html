@@ -3,7 +3,11 @@
 {% block head %}
     {{ super() }}
 {% endblock %}
-
+{% block page_css %}
+    #valuetype-col{
+        width: 10em;
+    }
+{% endblock %}
 {% block masthead %}{{t.name}}{% endblock %}
 {% block pageheader %}
     <div class="page-header">
@@ -24,9 +28,10 @@
     <tr>
         <th>#</th>
         <th>Column</th>
-        <th>Alt Name</th>
-        <th>Type</th>
-        <th>Size</th>
+        <th>Role</th>
+        <th>DataType</th>
+        <th id="valuetype-col">ValueType</th>
+        <th>Has Nulls?</th>
         <th>Description</th>
         <th>Vid</th>
         <th>Codes</th>
@@ -36,18 +41,12 @@
     <tr>
         <td>{{c.sequence_id}}</td>
         <td>{{c.name}}</td>
-        <td>{{c.altname}}</td>
+        <td>{{c.role}}</td>
         <td>{{c.datatype}}</td>
-        <td>{{c.size}}</td>
+        <td>{{c.valuetype_description}}<br/><small>{{c.datatype}}</small></td>
+        <td>{% if c.has_nulls %}Y{% endif %}</td>
         <td>{{c.description}}</td>
         <td>{%if c.sequence_id == 1 %}{{t.vid}}{% else %}{{c.vid}}{% endif %}</td>
-        <td>{%if c.proto_vid %}
-            <a href="{{proto_vid_path(c.proto_vid)}}">{{c.proto_vid}} ({{tc_obj(c.proto_vid).name}})</a>
-            {%endif-%}
-            {%if c.fk_vid %}
-            <a href="{{proto_vid_path(c.fk_vid)}}">{{c.fk_vid}} ({{tc_obj(c.fk_vid).name}})</a>
-            {%endif-%}
-        </td>
         <td>{% if c.codes %}
             <ul>
                 {% for cd in c.codes.values()|sort(attribute='key') %}
