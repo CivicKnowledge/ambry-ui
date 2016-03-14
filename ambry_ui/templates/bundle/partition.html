@@ -48,6 +48,29 @@
     #valuetype-col{
         width: 10em;
     }
+    .column-role-d td:nth-of-type(2){
+        /*background-color: #e6f2ff;*/
+        color: green;
+    }
+    .column-role-m td:nth-of-type(2){
+        /*background-color: #e6fff2;*/
+        color: blue;
+    }
+    .column-role-e td:nth-of-type(2){
+        /*background-color: #FAFAFA;*/
+        color: #999;
+    }
+
+    .column-subordinate td:nth-of-type(2) {
+        padding-left: 3em;
+    }
+
+    .column-primary td:nth-of-type(2) {
+        font-weight: bold;
+        font-size: 120%
+    }
+
+
 {%  endblock %}
 {% block body %}
 
@@ -78,22 +101,29 @@
             </p>
          {% endif -%}
 
-        <table class="table table-striped table-bordered table-condensed">
+        <table class="table table-bordered table-condensed">
             <tr>
                 <th>#</th>
                 <th>Column</th>
                 <th id="valuetype-col">Data Type</th>
+                <th>Null?</th>
                 <th>Description</th>
                 <th>Unique Values /<br/>
                     Histogram ( &mu;&plusmn;2&sigma; range )</th>
+                <th>More</th>
 
             </tr>
 
             {% for c in p.table.columns|sort(attribute='sequence_id') -%}
-            <tr>
+            <tr class="column-role-{{ c.role }} {%  if c.parent %}column-subordinate{% else %}column-primary{% endif %}">
                 <td>{{c.sequence_id}}</td>
                 <td>{{c.name}}</td>
-                <td>{{c.valuetype_description}}<br/><small>{{c.role_description}}, {{c.datatype}}</small></td>
+                <td data-toggle="tooltip" data-placement="right" data-container="body"
+                    title="{{c.valuetype_class.__name__}}, {{ c.valuetype }}">
+                    {{c.valuetype_description}}<br/>
+                    <small>{{c.role_description}}, {{c.datatype}}</small>
+                </td>
+                <td>{% if c.has_nulls %}Y{% endif %}</td>
                 <td>{{c.description|default('', true)}}</td>
                 <td >
                     {%  if c.role == 'd' %}
@@ -102,7 +132,7 @@
                         data-title="Selected Values"
                         data-content="{{ p.stats_dict[c.name].uvalues|join(', ') }}" >
                         {{p.stats_dict[c.name].nuniques}} Uniques </a>
-                    {% elif c.role == 'm' %}
+                    {% elif c.role == 'm' or c.role == 'e' %}
                         <div><span class="histospark">
                         {% for e in p.stats_dict[c.name].hist %}{{e}},{% endfor %}
                         </span></div>
@@ -120,7 +150,11 @@
 
                             </div>
                     {% endif %}
-
+                </td>
+                <td>
+                    {% if c.role == 'm'%}
+                    <a href="{{ url_for('get_plots',pvid=p.dataset.vid) }}"><i class="fa fa-line-chart"></i></a>
+                    {%  endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -128,28 +162,24 @@
     </div>
 </div>
 
-{% if p.sample %}
-    <h2>Sample Data</h2>
-    <table class="table table-striped table-bordered table-condensed">
-        <thead>
-        <tr>
-            {% for c in p.table.columns.values()|sort(attribute='sequence_id') -%}
-            <th>{{c.vid}} / {{c.name}}</th>
-            {% endfor %}
-        </tr>
-        </thead>
-        <tbody>
-        {% for row in p.sample %}
-        <tr>
-            <th>{{row[0]}}</th>
-            {% for col in row[1:] %}
-            <td> {{col}}</td>
-            {% endfor %}
-        </tr>
-        {% endfor %}
-        </tbody>
+<h2>Sources</h2>
+<div >
+    <table id="sources-table" class="table table_condensed ">
+    <tr>
+        <th>Name</th>
+        <th>Reference</th>
+    </tr>
+    {% for s in b.sources|sort(attribute='name') %}
+        {% if s.dest_table_name == p.table.name %}
+            <tr>
+            <td>{{s.name}}</td>
+            <td><a href="{{ s.url }}">{{ s.abbrev_url}}</a></td>
+            </tr>
+        {% endif %}
+    {% endfor -%}
     </table>
-{%endif%}
+</div>
+
 
 {% endblock %}
 
@@ -161,6 +191,7 @@
 
         $(function() {
          $('[data-toggle="popover"]').popover()
+         $('[data-toggle="tooltip"]').tooltip()
          $('.histospark').sparkline('html', {height: 25, barWidth: 8, type: 'bar', barColor: 'blue'} );
          $('.boxplot').sparkline('html', {height: 25, width: 100, type: 'box',
              barColor: 'blue', raw: true,

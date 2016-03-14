@@ -4,8 +4,27 @@
     {{ super() }}
 {% endblock %}
 {% block page_css %}
-    #valuetype-col{
-        width: 10em;
+
+    .column-role-d td:nth-of-type(2){
+        /*background-color: #e6f2ff;*/
+        color: green;
+    }
+    .column-role-m td:nth-of-type(2){
+        /*background-color: #e6fff2;*/
+        color: blue;
+    }
+    .column-role-e td:nth-of-type(2){
+        /*background-color: #FAFAFA;*/
+        color: #999;
+    }
+
+    .column-subordinate td:nth-of-type(2) {
+        padding-left: 3em;
+    }
+
+    .column-primary td:nth-of-type(2) {
+        font-weight: bold;
+        font-size: 120%
     }
 {% endblock %}
 {% block masthead %}{{t.name}}{% endblock %}
@@ -28,8 +47,6 @@
     <tr>
         <th>#</th>
         <th>Column</th>
-        <th>Role</th>
-        <th>DataType</th>
         <th id="valuetype-col">ValueType</th>
         <th>Has Nulls?</th>
         <th>Description</th>
@@ -38,12 +55,15 @@
 
     </tr>
     {% for c in t.columns -%}
-    <tr>
+    <tr class="column-role-{{ c.role }} {%  if c.parent %}column-subordinate{% else %}column-primary{% endif %}">
+
         <td>{{c.sequence_id}}</td>
         <td>{{c.name}}</td>
-        <td>{{c.role}}</td>
-        <td>{{c.datatype}}</td>
-        <td>{{c.valuetype_description}}<br/><small>{{c.datatype}}</small></td>
+        <td data-toggle="tooltip" data-placement="right" data-container="body"
+            title="{{c.valuetype_class.__name__}}, {{ c.valuetype }}">
+            {{c.valuetype_description}}<br/>
+            <small>{{c.role_description}}, {{c.datatype}}</small>
+        </td>
         <td>{% if c.has_nulls %}Y{% endif %}</td>
         <td>{{c.description}}</td>
         <td>{%if c.sequence_id == 1 %}{{t.vid}}{% else %}{{c.vid}}{% endif %}</td>

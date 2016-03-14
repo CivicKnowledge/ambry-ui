@@ -1,0 +1,33 @@
+{% extends "bundle/partition.html" %}
+{% from 'bundle/tabs.html' import tabs %}
+{% block head %}
+    {{ super() }}
+    <link href="{{ url_for('static', filename='js/bower_components/c3/c3.css') }}" rel="stylesheet">
+
+{% endblock %}
+{% block page_css %}
+
+{%  endblock %}
+{% block body %}
+
+    <h2>Plots</h2>
+
+    <div id="chart"></div>
+
+
+{% endblock %}
+
+{% block tailjs %}
+    {{ super() }}
+    <script src="{{ url_for('static', filename='js/bower_components/d3/d3.min.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='js/bower_components/c3/c3.min.js') }}" charset="utf-8"></script>
+
+    <script>
+    var chart = c3.generate({{ dumps(plot_config) | safe }});
+
+    </script>
+
+
+{% endblock %}
+
+
