@@ -210,60 +210,6 @@ def get_partition(pvid):
 
     return aac.render('bundle/partition.html', **cxt)
 
-@app.route('/partitions/<pvid>/plots')
-def get_plots(pvid):
-
-    import json
-
-    p = aac.library.partition(pvid)
-    b = p.bundle
-
-    cxt = dict(
-        vid=b.identity.vid,
-        b=b,
-        p=p,
-
-        **aac.cc
-    )
-
-
-    dimension  = []
-    measure = []
-
-    for row in p:
-        if row.raceth_name == 'all':
-            measure.append(row.pm25_concentration)
-            dimension.append(row.geoname)
-
-    plot_config = {
-        'axis': {
-            'x': {
-                'height': 130,
-                'tick': {
-                    'multiline': False,
-                    'rotate': 45
-                },
-                'type': 'category'
-            }
-        },
-        'bar': {
-            'width': {
-                'ratio': .8
-            }
-        },
-        'data': {
-            'columns': [
-                ['x'] + dimension,
-                ['m1'] + measure
-            ],
-            'type': 'bar',
-            'x': 'x'
-        }
-    }
-
-    return aac.render('bundle/plots.html', plot_config=plot_config, dumps=json.dumps, **cxt)
-
-
 @app.route('/bundles/<bvid>/process')
 def bundle_process(bvid):
     b = aac.library.bundle(bvid)

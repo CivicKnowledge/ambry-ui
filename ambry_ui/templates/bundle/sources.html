@@ -9,7 +9,13 @@
         {% for s in b.sources[:25]|sort(attribute='name') %}
             <tr>
             <td>{{s.name}}</td>
-            <td><a href="{{ s.url }}">{{ s.abbrev_url}}</a></td>
+            <td>
+                {%  if s.url and s.url.startswith('http') %}
+                <a href="{{ s.url }}">{{ s.abbrev_url}}</a>
+                {%  else %}
+                {{ s.ref }}
+                {% endif %}
+            </td>
             </tr>
         {% endfor -%}
         </table>

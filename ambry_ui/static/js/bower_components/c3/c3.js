@@ -465,6 +465,7 @@
     };
 
     c3_chart_internal_fn.redraw = function (options, transitions) {
+
         var $$ = this, main = $$.main, d3 = $$.d3, config = $$.config;
         var areaIndices = $$.getShapeIndices($$.isAreaType), barIndices = $$.getShapeIndices($$.isBarType), lineIndices = $$.getShapeIndices($$.isLineType);
         var withY, withSubchart, withTransition, withTransitionForExit, withTransitionForAxis,
@@ -681,6 +682,7 @@
                 if (flow) {
                     flow();
                 }
+
                 if (config.onrendered) {
                     config.onrendered.call($$);
                 }
@@ -3936,6 +3938,7 @@
         this.legendItemTextBox = {};
     };
     c3_chart_internal_fn.updateLegend = function (targetIds, options, transitions) {
+
         var $$ = this, config = $$.config;
         var xForLegend, xForLegendText, xForLegendRect, yForLegend, yForLegendText, yForLegendRect;
         var paddingTop = 4, paddingRight = 10, maxWidth = 0, maxHeight = 0, posMin = 10, tileWidth = 15;

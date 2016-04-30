@@ -126,11 +126,17 @@
                 <td>{% if c.has_nulls %}Y{% endif %}</td>
                 <td>{{c.description|default('', true)}}</td>
                 <td >
-                    {%  if c.role == 'd' %}
+
+                    {%  if c.role == 'd' or c.role == 'key' or
+                            ( not c.role and (c.datatype in ('str','unicode') or
+                                              p.stats_dict[c.name].nuniques < 100 ) ) %}
                         <a tabindex = "0"
-                        data-toggle="popover" data-placement="left" data-trigger="hover"
-                        data-title="Selected Values"
-                        data-content="{{ p.stats_dict[c.name].uvalues|join(', ') }}" >
+                            data-toggle="popover" data-placement="left" data-trigger="hover"
+                            data-title="Selected Values"
+                            {% if p.stats_dict[c.name].uvalues %}
+                            data-content="{{ p.stats_dict[c.name].uvalues|join(', ') }}"
+                            {%  endif %} %}
+                        >
                         {{p.stats_dict[c.name].nuniques}} Uniques </a>
                     {% elif c.role == 'm' or c.role == 'e' %}
                         <div><span class="histospark">
@@ -148,7 +154,20 @@
                             <dt>Max</dt><dd>{{'%0.2f'| format(p.stats_dict[c.name].max|float) }}</dd>
                         </dl></div>"> Quartiles </a>
 
-                            </div>
+                        {%  if  p.stats_dict[c.name].nuniques < 100 %}
+                            <a tabindex = "0"
+                            data-toggle="popover" data-placement="left" data-trigger="hover"
+                            data-title="Selected Values"
+                            {% if p.stats_dict[c.name].uvalues %}
+                            data-content="{{ p.stats_dict[c.name].uvalues|join(', ') }}"
+                            {%  endif %} %}
+                            >
+                            {{p.stats_dict[c.name].nuniques}} Uniques </a>
+                        {% else %}
+                            {{p.stats_dict[c.name].nuniques}} Uniques
+                        {% endif %}
+
+                        </div>
                     {% endif %}
                 </td>
                 <td>

@@ -203,3 +203,4 @@ import ambry_ui.views
 import ambry_ui.jsonviews
 import ambry_ui.api
 import ambry_ui.user
+import ambry_ui.plots
