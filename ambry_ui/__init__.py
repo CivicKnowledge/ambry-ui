@@ -35,6 +35,7 @@ app_config = {
     'WTF_CSRF_SECRET_KEY': os.getenv('AMBRY_UI_CSRF_SECRET', os.getenv('AMBRY_UI_SECRET')),
 
     'LOGGED_IN_USER': None,  # Name of user to auto-login
+    'AMBRY_ADMIN_PASS': None,  # Name of user to auto-login
 }
 
 if os.getenv('AMBRY_ADMIN_PASS'):

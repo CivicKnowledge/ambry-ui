@@ -12,6 +12,22 @@
 
     <h2>Plots</h2>
 
+    <div>
+        measures:<ul>
+        {% for m in measures %}
+            <li>{{ m.name }} {{  url_for('get_plots_csv',pvid=p.vid, cvid=m.vid) }}</li>
+        {%  endfor %}
+        </ul>
+    </div>
+
+        <div>
+        dimensions:
+        {% for d in dimensions %}
+            {{ d.name }}
+        {%  endfor %}
+    </div>
+
+
     <div id="chart"></div>
 
 
@@ -29,12 +45,7 @@
         console.log('render...',x);
     }
 
-
-
     var chart = c3.generate(config);
-
-
-
 
     </script>
 

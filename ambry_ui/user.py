@@ -16,8 +16,6 @@ import logging
 logger = app.logger
 
 logger = logging.getLogger('gunicorn.access')
-logger.setLevel(logging.DEBUG)
-
 
 @app.login_manager.user_loader
 def load_user(user_id):
@@ -28,17 +26,17 @@ def load_user(user_id):
 
         account = Account(account_id=user_id, major_type='user', minor_type='admin')
         account.encrypt_password(app.config['AMBRY_ADMIN_PASS'])
-        logger.info("Got configured password; using fake admin account".format(user_id))
+        logger.debug("Got configured password; using fake admin account".format(user_id))
 
     else:
         try:
             account = aac.library.account(user_id)
         except NotFoundError:
-            logger.info("User '{}' not found  ".format(user_id))
+            logger.debug("User '{}' not found  ".format(user_id))
             return None
 
         if account.major_type != 'user':
-            logger.info("User '{}' not api service type; got '{}'  ".format(user_id, account.major_type))
+            logger.debug("User '{}' not api service type; got '{}'  ".format(user_id, account.major_type))
             return None
 
     return User(account)
@@ -102,7 +100,6 @@ def csrf_error(reason):
 def login():
 
     from .forms import LoginForm
-
 
     cxt = {
         'next_page': request.args.get('next_page', '/')

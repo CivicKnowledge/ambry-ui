@@ -106,7 +106,7 @@
                 <th>#</th>
                 <th>Column</th>
                 <th id="valuetype-col">Data Type</th>
-                <th>Null?</th>
+                <th>Width</th>
                 <th>Description</th>
                 <th>Unique Values /<br/>
                     Histogram ( &mu;&plusmn;2&sigma; range )</th>
@@ -123,18 +123,19 @@
                     {{c.valuetype_description}}<br/>
                     <small>{{c.role_description}}, {{c.datatype}}</small>
                 </td>
-                <td>{% if c.has_nulls %}Y{% endif %}</td>
+                <td>{{p.stats_dict[c.name].width}}</td>
                 <td>{{c.description|default('', true)}}</td>
                 <td >
 
                     {%  if c.role == 'd' or c.role == 'key' or
                             ( not c.role and (c.datatype in ('str','unicode') or
                                               p.stats_dict[c.name].nuniques < 100 ) ) %}
+
                         <a tabindex = "0"
                             data-toggle="popover" data-placement="left" data-trigger="hover"
                             data-title="Selected Values"
                             {% if p.stats_dict[c.name].uvalues %}
-                            data-content="{{ p.stats_dict[c.name].uvalues|join(', ') }}"
+                            data-content="{{ p.stats_dict[c.name].uvalues|sort|join(', ') }}"
                             {%  endif %} %}
                         >
                         {{p.stats_dict[c.name].nuniques}} Uniques </a>
@@ -172,7 +173,7 @@
                 </td>
                 <td>
                     {% if c.role == 'm'%}
-                    <a href="{{ url_for('get_plots',pvid=p.dataset.vid) }}"><i class="fa fa-line-chart"></i></a>
+                    <a href="{{ url_for('get_plots',pvid=p.vid, cvid=c.vid) }}"><i class="fa fa-line-chart"></i></a>
                     {%  endif %}
                 </td>
             </tr>

@@ -100,12 +100,14 @@ def start_ui(args, l, rc):
 
     if not args.debug:
         webbrowser.open("http://{}:{}".format(args.host, args.port))
+
     else:
         import logging
         import os
         logging.basicConfig(level=logging.DEBUG)
         log = logging.getLogger('werkzeug')
         log.setLevel(logging.DEBUG)
+
         os.environ["AMBRY_UI_DEBUG"] = 'true' # DOn't know why this needs to be done, but it does.
         #prt("Running at http://{}:{}".format(args.host, args.port))
 

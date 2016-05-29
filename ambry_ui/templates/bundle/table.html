@@ -30,7 +30,7 @@
 {% block masthead %}{{t.name}}{% endblock %}
 {% block pageheader %}
     <div class="page-header">
-        <div class="summary">{{t.description}}. {{ t.columns|length }} Columns.</div>
+        <div class="summary">{{t.description|default('',True)}}. {{ t.columns|length }} Columns.</div>
         <div>From: <a href="{{url_for('bundle_main',vid=t.dataset.vid)}}">{{t.dataset.fqname}}</a>.</div>
     </div>
 
@@ -47,8 +47,8 @@
     <tr>
         <th>#</th>
         <th>Column</th>
-        <th id="valuetype-col">ValueType</th>
-        <th>Has Nulls?</th>
+        <th id="valuetype-col">Data Type</th>
+        <th>Width</th>
         <th>Description</th>
         <th>Vid</th>
         <th>Codes</th>
@@ -64,8 +64,8 @@
             {{c.valuetype_description}}<br/>
             <small>{{c.role_description}}, {{c.datatype}}</small>
         </td>
-        <td>{% if c.has_nulls %}Y{% endif %}</td>
-        <td>{{c.description}}</td>
+        <td></td>
+        <td>{{c.description|default('', True)}}</td>
         <td>{%if c.sequence_id == 1 %}{{t.vid}}{% else %}{{c.vid}}{% endif %}</td>
         <td>{% if c.codes %}
             <ul>

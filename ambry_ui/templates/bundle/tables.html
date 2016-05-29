@@ -19,7 +19,7 @@
                 {% endfor %}
             </ul>
         {% endif -%}</td>
-        <td>{{t.description}}</td>
+        <td>{{t.description|default('',True)}}</td>
         <td>{{t.vid}}</td>
 
     </tr>

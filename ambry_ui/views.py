@@ -11,8 +11,7 @@ from werkzeug.local import LocalProxy
 import logging
 
 aac = LocalProxy(get_aac)
-
-app.logger.setLevel(logging.DEBUG)
+#app.logger.setLevel(logging.DEBUG)
 
 @app.errorhandler(500)
 def page_not_found(e):

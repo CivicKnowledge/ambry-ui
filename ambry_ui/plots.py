@@ -16,11 +16,59 @@ import logging
 logger = app.logger
 
 logger = logging.getLogger('gunicorn.access')
-logger.setLevel(logging.DEBUG)
 
+@app.route('/partitions/<pvid>/plots/<cvid>.csv')
+def get_plots_csv(pvid, cvid):
+    """Return the CSV file for the data for a plot
+    :param pvid:
+    :param cvid: The measure to plot
+    """
+    from flask import Response
+    from cStringIO import StringIO
 
-@app.route('/partitions/<pvid>/plots')
-def get_plots(pvid):
+    primary_dimension = request.args.get('primary')
+    secondary_dimension = request.args.get('secondary', None)
+
+    p = aac.library.partition(pvid)
+
+    md = p.measuredim
+
+    measure = md.measure(cvid)
+
+    b = StringIO()
+
+    md.md_frame(measure=measure.name,
+                    p_dim=primary_dimension,
+                    s_dim=secondary_dimension).sort_index().to_csv(b)
+
+    return Response(b.getvalue(), mimetype='text/csv')
+
+@app.route('/partitions/<pvid>/plots/<cvid>.json')
+def get_plots_json(pvid, cvid):
+    """Return the json configuration for a plot
+    :param pvid:
+    :param cvid: The measure to plot
+    """
+    from flask import Response
+    from cStringIO import StringIO
+
+    primary_dimension = request.args.get('primary')
+    secondary_dimension = request.args.get('secondary', None)
+
+    p = aac.library.partition(pvid)
+
+    md = p.measuredim
+
+    measure = md.measure(cvid)
+
+    return aac.json(
+        primary_dimension=primary_dimension,
+        secondary_dimension=secondary_dimension,
+        measure=measure.name
+    )
+
+@app.route('/partitions/<pvid>/plots/<cvid>')
+def get_plots(pvid, cvid):
 
     import json
 
@@ -35,17 +83,28 @@ def get_plots(pvid):
         **aac.cc
     )
 
+
     measure = 'unemployment_rate'
     p_dim = 'gvid'
     s_dim = 'raceth'
     filtered_dims = {'reportyear': '2006/2010', 'raceth' : 6}
 
-    rows = p.measuredim.md_array(measure=measure,
-                                 p_dim=p_dim,
-                                 s_dim=s_dim,
-                                 filtered_dims=filtered_dims)
+    #rows = p.measuredim.md_array(measure=measure,
+    #                             p_dim=p_dim,
+    #                             s_dim=s_dim,
+    #                             filtered_dims=filtered_dims)
 
-    rows = [rows[0]] + sorted(rows[1:], key=lambda r: -r[1])
+    #rows = [rows[0]] + sorted(rows[1:], key=lambda r: -r[1])
+
+    md = p.measuredim
+
+    for r in md.primary_measures:
+        print "MEASURE: ", r.name
+
+    for r in md.primary_dimensions:
+        print r.name, r.label, r.labels
+
+    rows = [[1,2,3]]
 
     plot_config = {
         'chart': {},
@@ -75,4 +134,8 @@ def get_plots(pvid):
         }
     }
 
-    return aac.render('bundle/plots.html', plot_config=plot_config, dumps=json.dumps, **cxt)
+    return aac.render('bundle/plots.html',
+                      plot_config=plot_config,
+                      measures = md.primary_measures,
+                      dimensions = md.primary_dimensions,
+                      dumps=json.dumps, **cxt)
