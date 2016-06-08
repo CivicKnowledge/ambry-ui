@@ -21,7 +21,7 @@ logger = logging.getLogger('gunicorn.access')
 def load_user(user_id):
     from ambry.orm.exc import NotFoundError
 
-    if user_id == 'admin' and 'AMBRY_ADMIN_PASS' in app.config:
+    if user_id == 'admin' and 'AMBRY_ADMIN_PASS' in app.config and app.config['AMBRY_ADMIN_PASS']:
         from ambry.orm import Account
 
         account = Account(account_id=user_id, major_type='user', minor_type='admin')

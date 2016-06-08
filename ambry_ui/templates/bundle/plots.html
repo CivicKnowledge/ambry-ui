@@ -12,18 +12,26 @@
 
     <h2>Plots</h2>
 
-    <div>
-        measures:<ul>
-        {% for m in measures %}
-            <li>{{ m.name }} {{  url_for('get_plots_csv',pvid=p.vid, cvid=m.vid) }}</li>
-        {%  endfor %}
-        </ul>
-    </div>
+    <div> measure: {{measure.name}} </div>
 
-        <div>
-        dimensions:
-        {% for d in dimensions %}
-            {{ d.name }}
+    <div>
+        <a href="{{url_for('get_plots_json',pvid=p.vid)}}"> Plot JSON </a>
+        dimensions: <br/>
+        {% for d1, d2, filters, chart, config in dimensions %}
+            {% if config.data_len > 0 %}
+            {{ d1.name}}, {{d2.name if d2 else None  }} {{chart}}
+            <a href="{{url_for('get_plots_csv',pvid=p.vid, cvid=measure.vid, primary=d1.name, secondary=d2.name if d2 else None, **filters)}}">
+                CSV
+            </a>
+            <a href="{{url_for('get_plot_json',pvid=p.vid, cvid=measure.vid, primary=d1.name, secondary=d2.name if d2 else None, **filters)}}">
+                JSON
+            </a>
+            <a href="{{url_for('get_plot',pvid=p.vid, cvid=measure.vid, primary=d1.name, secondary=d2.name if d2 else None, **filters)}}">
+                Plot
+            </a>
+
+            <div id="{{(config.plot.bindto)[1:]}}"></div>
+            {%endif%}
         {%  endfor %}
     </div>
 
@@ -39,13 +47,11 @@
     <script src="{{ url_for('static', filename='js/bower_components/c3/c3.js') }}" charset="utf-8"></script>
 
     <script>
-    var config = {{ dumps(plot_config) | safe }}
 
-    config.onrendered = function(x){
-        console.log('render...',x);
-    }
 
-    var chart = c3.generate(config);
+    {% for d1, d2, filters, chart, config in dimensions %}
+        var chart = c3.generate({{ dumps(config['plot']) | safe }});
+    {% endfor %}
 
     </script>
 
