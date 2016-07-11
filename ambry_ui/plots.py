@@ -19,7 +19,7 @@ logger = logging.getLogger('gunicorn.access')
 
 
 def plot_df(pvid, cvid, **kwargs):
-
+    """Return a dataframe for a plot"""
 
     primary_dimension = None
     secondary_dimension = None
@@ -44,30 +44,37 @@ def plot_df(pvid, cvid, **kwargs):
             d = md.dimension(k)
             filtered[k] = d.python_type(v)
 
-    return md.md_frame(measure=measure.name,
-                     p_dim=primary_dimension,
-                     s_dim=secondary_dimension,
-                     filtered_dims=filtered,
-                     unstack=True
-                     )
+    df = md.dataframe(measure.name,primary_dimension,secondary_dimension,filters=filtered)
 
-@app.route('/partitions/<pvid>/plots/<cvid>.csv')
-def get_plots_csv(pvid, cvid):
-    """Return the CSV file for the data for a plot
-    :param pvid:
-    :param cvid: The measure to plot
-    """
 
-    from flask import Response
-    from cStringIO import StringIO
+    # Hack! The dataframe datatype is not preserved across all of the operations below,
+    # so we have to manually preserve the metadata.
+    _metadata = df._metadata
+    metadata = { k:getattr(df, k)  for k in _metadata }
 
-    b = StringIO()
+    labels = df.labels
 
-    df = plot_df(pvid, cvid, **dict(request.args.items())) # Convert from MultiDict to dict
+    df = df[labels + [df.measure]]
 
-    df.sort_index().to_csv(b)
 
-    return Response(b.getvalue(), mimetype='text/csv')
+
+    if secondary_dimension:
+        df = df.set_index(labels).unstack()
+        df.columns = df.columns.droplevel()
+    else:
+        df = df.set_index(labels)
+
+    df.reset_index(inplace=True)
+    df.set_index(labels[0], inplace=True)
+
+    # Total Hack!
+    df._metadata = _metadata
+    for k in _metadata:
+        setattr(df, k, metadata[k])
+
+
+    return df
+
 
 
 def measure_dict(p, m):
@@ -98,26 +105,9 @@ def dimension_dict(p, d):
     )
 
 
-@app.route('/partitions/<pvid>/plots.json')
-def get_plots_json(pvid):
-    """ Return a list of all possible plots.
-    """
-
-    p = aac.library.partition(pvid)
-
-    md = p.measuredim
-
-    # Axis dimensions are those that can be presented on an axis.
-    # Category dimenions are dimensions that distinguish multiple lines or bars on a single chart.
-
-    return aac.json(
-        measures=[measure_dict(p, m) for m in md.primary_measures if p.stats_dict[m.name].nuniques > 1],
-        dimensions=[dimension_dict(p, d) for d in md.primary_dimensions if p.stats_dict[d.name].nuniques > 1]
-    )
-
-
-def make_plot_json(pvid, cvid, primary_dimension, secondary_dimension=None):
-
+def make_measuredim_json(pvid, cvid, primary_dimension, secondary_dimension=None):
+    """Create the JSON configuration object for the measure and dimension set,
+     which is expanded to use for the configuration for a plot or map. """
     p = aac.library.partition(pvid)
 
     md = p.measuredim
@@ -136,39 +126,66 @@ def make_plot_json(pvid, cvid, primary_dimension, secondary_dimension=None):
         if d.name != p_dim.name and (not s_dim or d.name != s_dim.name):
             filtered[d.name] = sorted(d.pstats.uvalues)[0]
 
-    primary_dimension = dict(
-        name=p_dim.name,
-        labels=p_dim.label.name if p_dim.label else p_dim.name,
-        len=p.stats_dict[p_dim.name].nuniques,
-        values=p.stats_dict[p_dim.name].uvalues
+    value_type = None
+
+    if p_dim.valuetype_class.is_time():
+        value_type = 'time'
+    elif p_dim.valuetype_class.is_geo():
+        value_type = 'geo'
+    else:
+        value_type = None
+
+    return dict(
+        measure={
+            'vid': measure.vid,
+            'name': measure.name,
+            'description': measure.description
+        },
+        primary_dimension=dict(
+            vid=p_dim.vid,
+            name=p_dim.name,
+            labels=p_dim.label.name if p_dim.label else p_dim.name,
+            len=p.stats_dict[p_dim.name].nuniques,
+            values=p.stats_dict[p_dim.name].uvalues,
+            value_type=value_type
+        ),
+        secondary_dimension=dict(
+            vid=s_dim.vid if s_dim else None,
+            name=s_dim.name if s_dim else None,
+            labels=s_dim.label.name if s_dim and s_dim.label else (s_dim.name if s_dim else None),
+            len=p.stats_dict[s_dim.name].nuniques if s_dim else 0,
+            values=p.stats_dict[s_dim.name].uvalues if s_dim else 0
+        ),
+        filtered=filtered
     )
-    secondary_dimension = dict(
-        name=s_dim.name if s_dim else None,
-        labels=s_dim.label.name if s_dim and s_dim.label else (s_dim.name if s_dim else None),
-        len=p.stats_dict[s_dim.name].nuniques if s_dim else 0,
-        values = p.stats_dict[s_dim.name].uvalues if s_dim else 0
-    )
 
-    df = plot_df(pvid=p.vid, cvid=measure.vid,
-                 primary=p_dim.name,
-                 secondary=s_dim.name if s_dim else None,
-                 **filtered
-                 )
+def dimpath(p_dim, s_dim):
+
+    assert p_dim
+
+    return p_dim + ('/'+s_dim if s_dim else '')
 
 
-    data = url_for('get_plots_csv', pvid=p.vid, cvid=measure.vid,
-                   primary=p_dim.name,
-                   secondary=s_dim.name if s_dim else None,
-                   **filtered)
+def make_plot_json(pvid, measure, dimpath, filters = {}):
 
-    bt_id = "{}-{}-{}-{}".format(pvid, cvid, primary_dimension['name'], secondary_dimension['name'])
+    md = aac.library.partition(pvid).measuredim
+
+    ds = md.enumerate_dimension_sets()[dimpath]
+
+    data_csv_url = url_for('get_plot_data_csv',
+                           pvid=pvid, measure=measure, dimpath=dimpath,
+                           **filters)
 
     plot_config = {
-        'bindto': '#' + bt_id,
+
+        'title': "{} vs {}".format(measure,
+                                   " and ".join((ds['p_dim'], ds['s_dim']) if ds['s_dim'] else (ds['p_dim'],))),
+
         'data': {
-            'url': data,
+            'url': data_csv_url,
             'mimeType': 'csv'
         },
+
         'axis': {
 
             'x': {
@@ -182,10 +199,10 @@ def make_plot_json(pvid, cvid, primary_dimension, secondary_dimension=None):
         }
     }
 
-    if p_dim.valuetype_class.is_time():
+    if ds['p_dim_type'] == 'time':
         chart_type = 'line'
     else:
-        chart_type = 'bar'
+
         plot_config['bar'] = {
             'bar': {
                 'width': {
@@ -193,36 +210,55 @@ def make_plot_json(pvid, cvid, primary_dimension, secondary_dimension=None):
                 }
             }
         }
-        plot_config['data']['x'] = primary_dimension['labels']
+        plot_config['data']['x'] = ds['p_label']
         plot_config['data']['type'] = 'bar'
         plot_config['data']['xSort'] = 'bar'
 
-    return dict(
-        primary_dimension=primary_dimension,
-        secondary_dimension=secondary_dimension,
-        data=data,
-        data_len=len(df),
-        plot=plot_config
-    )
+    plot_config['dimension_set'] = ds
+
+    return plot_config
 
 
-@app.route('/partitions/<pvid>/plots/<cvid>.json')
-def get_plot_json(pvid, cvid, return_json=True):
-    """Return the json configuration for a plot
+def make_map_json(pvid, cvid, primary_dimension, secondary_dimension=None):
+    d = make_measuredim_json(pvid, cvid, primary_dimension, secondary_dimension)
+
+    data_json_url = url_for('get_plot_data_json',
+                            pvid=d['primary_dimension']['vid'],
+                            cvid=d['measure']['vid'],
+                            primary=d['primary_dimension']['name'],
+                            secondary=d['secondaru_dimension']['vid'],
+                            **d['filtered'])
+    map_config = {
+        'data': {
+            'url': data_json_url,
+            'mimeType': 'json'
+        }
+    }
+
+    d['map'] = map_config
+
+    return d
+
+#@app.cache.memoize(timeout=300)
+def measuredim_dict(pvid):
+
+    md = aac.library.partition(pvid).measuredim
+
+    d = md.dict
+
+    return d
+
+@app.route('/plots/<pvid>/config.json')
+def get_plot_partition_config(pvid):
+    """Return the json configuration for a partition, including all of the
     :param pvid:
-    :param cvid: The measure to plot
     """
-
-    d = make_plot_json(pvid, cvid, request.args.get('primary'), request.args.get('secondary', None))
-
-    if return_json:
-        return aac.json(**d)
-    else:
-        return d
+    return aac.json(**measuredim_dict(pvid))
 
 
-@app.route('/partitions/<pvid>/plots/<cvid>')
+@app.route('/plots/<pvid>/plots/<cvid>')
 def get_plots(pvid, cvid):
+    """A page of plots for a single partition"""
     import json
 
     p = aac.library.partition(pvid)
@@ -232,47 +268,115 @@ def get_plots(pvid, cvid):
 
     measure = md.measure(cvid)
 
-    dimension_sets = []
-
-    dimensions = [d for d in md.primary_dimensions if p.stats_dict[d.name].nuniques > 1]
-
-    def add_to_ds(d1, d2):
-
-        if ((d1 != d2) and (not d2 or not d2.valuetype_class.is_geo())):
-
-            if d1.valuetype_class.is_time():
-                chart_type = 'line'
-            else:
-                chart_type = 'bar'
-
-            filtered = {}
-            for d in dimensions:
-                if d != d1 and d != d2:
-                    filtered[d.name] = sorted(d.pstats.uvalues)[0]
-
-            dimension_sets.append([d1, d2, filtered, chart_type])
-
-    for d1 in dimensions:
-        add_to_ds(d1, None)
-
-        for d2 in dimensions:
-            add_to_ds(d1, d2)
-
-    for i in range(len(dimension_sets)):
-        d1, d2, filters, chart = dimension_sets[i]
-        dimension_sets[i].append(make_plot_json(pvid, cvid, d1.name, d2.name if d2 else None))
-
     return aac.render('bundle/plots.html',
+                      p=p, b=b,
                       measure=measure,
-                      dimensions=sorted(dimension_sets),
-                      dumps=json.dumps,
+                      md=md.dict,
+                      **aac.cc)
+
+
+@app.route('/plots/<pvid>/data/<path:dimpath>/<measure>.csv')
+def get_plot_data_csv(pvid, dimpath, measure):
+    """Return the CSV file for the data for a plot
+    :param pvid:
+    :param cvid: The measure to plot
+    """
+
+    from flask import Response
+    from cStringIO import StringIO
+
+    buf = StringIO()
+    p = aac.library.partition(pvid)
+
+    md = p.measuredim.dict
+    dim_set = md['dimension_sets'][dimpath]
+
+    df = plot_df(pvid, measure, primary=dim_set['p_dim'], secondary =dim_set['s_dim'],
+                 **dict(request.args.items()))  # Convert from MultiDict to dict
+
+    df.sort_index().to_csv(buf)
+    return Response(buf.getvalue(), mimetype='text/csv')
+
+
+@app.route('/plots/<pvid>/data/<path:dimpath>/<measure>.json')
+def get_plot_data_json(pvid, dimpath, measure):
+    """Return the CSV file for the data for a plot
+    :param pvid:
+    :param cvid: The measure to plot
+    """
+
+    from flask import Response
+    from cStringIO import StringIO
+
+    b = StringIO()
+
+    df = plot_df(pvid, cvid, **dict(request.args.items()))  # Convert from MultiDict to dict
+
+    df.sort_index().reset_index().to_json(b, orient='records')
+
+    return Response(b.getvalue(), mimetype='application/vnd.geo+json')
+
+
+@app.route('/plots/<pvid>/config/<path:dimpath>/<measure>.json')
+def get_plot_json(pvid, dimpath, measure):
+    """Return the json configuration for a plot
+    :param pvid:
+    :param cvid: The measure to plot
+    """
+
+    d = make_plot_json(pvid, measure, dimpath)
+
+    return aac.json(**d)
+
+
+@app.route('/plots/<pvid>/config/map/<cvid>.json')
+def get_map_json(pvid, cvid):
+    """Return the json configuration for a map
+    :param pvid:
+    :param cvid: The measure to plot
+    """
+
+    d = make_map_json(pvid, cvid,
+                      request.args.get('primary'),
+                      request.args.get('secondary', None))
+
+    return aac.json(**d)
+
+
+@app.route('/plots/<pvid>/plot/<path:dimpath>/<measure>')
+def get_plot(pvid, dimpath, measure):
+    """A single plot page"""
+    import json
+    import copy
+
+    plot_config = make_plot_json(pvid, measure, dimpath)
+
+    p = aac.library.partition(pvid)
+    b = p.bundle
+
+    md = p.measuredim
+    ds = plot_config['dimension_set']
+
+    variants = []
+
+    for filter_col, filter_vals in ds['filters'].items():
+        for filter_val in filter_vals:
+            d = make_plot_json(pvid, measure, dimpath, {filter_col:filter_val})
+            d['subtitle'] = "Filter: {}={}".format(filter_col,filter_val)
+            variants.append(d)
+
+    return aac.render('bundle/plot.html',
+                      config=plot_config,
+                      dimension_set=ds,
+                      variants=variants,
                       vid=b.identity.vid, b=b, p=p, **aac.cc)
 
 
-@app.route('/partitions/<pvid>/plot/<cvid>')
-def get_plot(pvid, cvid):
+@app.route('/plots/<pvid>/map/<cvid>')
+def get_map(pvid, cvid):
     import json
 
+    app.cache.set('foobar', 'foobtz')
 
     plot_config = make_plot_json(pvid, cvid, request.args.get('primary'), request.args.get('secondary', None))
 
@@ -283,8 +387,60 @@ def get_plot(pvid, cvid):
 
     measure = md.measure(cvid)
 
-    return aac.render('bundle/plot.html',
+    return aac.render('bundle/map.html',
                       measure=measure,
                       config=plot_config,
                       dumps=json.dumps,
                       vid=b.identity.vid, b=b, p=p, **aac.cc)
+
+
+
+@app.route('/boundaries/<gvid>/<sl>')
+def get_boundaries(gvid, sl):
+    """
+    Return a cached, static geojson file of boundaries for a region
+    :param gvid:  The GVID of the region
+    :param sl:  The summary level of the subdivisions of the region.
+    :return:
+    """
+
+    from geojson import Feature, Point, FeatureCollection, dumps
+    from shapely.wkt import loads
+    from geoid.civick import GVid
+    from os.path import join, exists
+    from flask import send_from_directory
+
+    cache_dir = aac.library.filesystem.cache('ui/geo')
+
+    fn = "{}-{}.geojson".format(str(gvid), sl)
+    fn_path = join(cache_dir, fn)
+
+    if not exists(fn_path):
+
+        p = aac.library.partition('census.gov-tiger-2015-counties')
+
+        features = []
+
+        for i, row in enumerate(p):
+            if row.statefp == 6:  # In dev, assume counties in California
+
+                gvid = GVid.parse(row.gvid)
+
+                f = Feature(geometry=loads(row.geometry).simplify(0.01),
+                            properties={
+                                'gvid': row.gvid,
+                                'state': gvid.state,
+                                'county': gvid.county,
+                                'count_name': row.name
+
+                            })
+
+                features.append(f)
+
+        fc = FeatureCollection(features)
+
+        with open(fn_path, 'w') as f:
+            f.write(dumps(fc))
+
+    return send_from_directory(cache_dir, fn, as_attachment=False, mimetype='application/vnd.geo+json')
+

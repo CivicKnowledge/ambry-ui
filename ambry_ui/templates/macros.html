@@ -1,9 +1,19 @@
 
+
+{% macro d3_plot(config) -%}
+    <div class="ambry-plot_container">
+        <h2>{{config.title}}</h2>
+        {% if config.subtitle %}
+        <h3>{{config.subtitle}}</h3>
+        {% endif %}
+        <p><a href="" class="csv-link">CSV</a></p>
+        <div class="ambry-c3-plot"  data-plotconfig="{{ config|tojson|forceescape }}"></div>
+    </div>
+{% endmacro %}
+
 {% macro json_button(page_name) -%}
 <a href="{{ url_for(page_name,**kwargs) }}"><span class="label label-primary">{json}</span></a>
 {% endmacro %}
-
-
 
 
 {% macro modal(id, title, summary = '', tabindex = -1) -%}

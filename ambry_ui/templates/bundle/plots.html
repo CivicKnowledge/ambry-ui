@@ -15,29 +15,25 @@
     <div> measure: {{measure.name}} </div>
 
     <div>
-        <a href="{{url_for('get_plots_json',pvid=p.vid)}}"> Plot JSON </a>
+        <a href="{{url_for('get_plot_partition_config',pvid=p.vid)}}"> Plot JSON </a>
         dimensions: <br/>
-        {% for d1, d2, filters, chart, config in dimensions %}
-            {% if config.data_len > 0 %}
-            {{ d1.name}}, {{d2.name if d2 else None  }} {{chart}}
-            <a href="{{url_for('get_plots_csv',pvid=p.vid, cvid=measure.vid, primary=d1.name, secondary=d2.name if d2 else None, **filters)}}">
+        {% for ds in md.dimension_sets.values()|sort(attribute='key') %}
+
+            {{ds.key}}
+            <a href="{{url_for('get_plot_data_csv',pvid=p.vid, measure=measure.name, dimpath=ds.key)}}">
                 CSV
             </a>
-            <a href="{{url_for('get_plot_json',pvid=p.vid, cvid=measure.vid, primary=d1.name, secondary=d2.name if d2 else None, **filters)}}">
+            <a href="{{url_for('get_plot_json',pvid=p.vid, measure=measure.name, dimpath=ds.key)}}">
                 JSON
             </a>
-            <a href="{{url_for('get_plot',pvid=p.vid, cvid=measure.vid, primary=d1.name, secondary=d2.name if d2 else None, **filters)}}">
+            <a href="{{url_for('get_plot',pvid=p.vid, measure=measure.name, dimpath=ds.key)}}">
                 Plot
             </a>
+            <br/>
+            {# <div id="{{(config.plot.bindto)[1:]}}"></div> #}
 
-            <div id="{{(config.plot.bindto)[1:]}}"></div>
-            {%endif%}
         {%  endfor %}
     </div>
-
-
-    <div id="chart"></div>
-
 
 {% endblock %}
 
@@ -45,16 +41,6 @@
     {{ super() }}
     <script src="{{ url_for('static', filename='js/bower_components/d3/d3.min.js') }}" charset="utf-8"></script>
     <script src="{{ url_for('static', filename='js/bower_components/c3/c3.js') }}" charset="utf-8"></script>
-
-    <script>
-
-
-    {% for d1, d2, filters, chart, config in dimensions %}
-        var chart = c3.generate({{ dumps(config['plot']) | safe }});
-    {% endfor %}
-
-    </script>
-
 
 {% endblock %}
 

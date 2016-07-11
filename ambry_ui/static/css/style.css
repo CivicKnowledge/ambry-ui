@@ -211,3 +211,7 @@ img.brand {
 body #train_add_app_tab {
     display: none;
 }
+
+.ambry-small_multiples .ambry-plot_container h2, .ambry-plot_container h3 {
+    font-size: 90%;
+}

@@ -20,9 +20,11 @@
             <div class="summary">{{ p.display.description }} {{ p.display.sub_description }}</div>
             <div>
                 {% if b.metadata.about.access == 'public' or current_user.is_authenticated %}
-                 <a class="btn btn-primary btn-sm" href="{{url_for('stream_file', pvid=p.vname, ct='csv')}}">CSV</a>
+                 <a class="btn btn-primary btn-sm"
+                    href="{{url_for('stream_file', pvid=p.vname, ct='csv')}}">CSV</a>
                 {% endif %}
-                From: <a href="{{url_for('bundle_main',vid=p.dataset.vid)}}">{{p.dataset.fqname}}</a>.
+                From: <a href="{{url_for('bundle_main',vid=p.dataset.vid)}}">
+                {{p.dataset.fqname}}</a>.
                 {{ p.sub_description }}
 
             </div>
@@ -81,7 +83,8 @@
             <dl>
             <h3>Documentation</h3>
             {% for d in docs %}
-                <dt><a href="{{d.url}}" target="_blank">{{d.title}}</a></dt><dd>{{ d.description }}</dd>
+                <dt><a href="{{d.url}}" target="_blank">{{d.title}}</a></dt>
+                <dd>{{ d.description }}</dd>
             {% endfor %}
             </dl>
         {% endif %}
@@ -173,7 +176,8 @@
                 </td>
                 <td>
                     {% if c.role == 'm'%}
-                    <a href="{{ url_for('get_plots',pvid=p.vid, cvid=c.vid) }}"><i class="fa fa-line-chart"></i></a>
+                    <a href="{{ url_for('get_plots',pvid=p.vid, cvid=c.vid) }}">
+                        <i class="fa fa-line-chart"></i></a>
                     {%  endif %}
                 </td>
             </tr>

@@ -1,5 +1,6 @@
 {% extends "bundle/partition.html" %}
 {% from 'bundle/tabs.html' import tabs %}
+{% from 'macros.html' import d3_plot %}
 {% block head %}
     {{ super() }}
     <link href="{{ url_for('static', filename='js/bower_components/c3/c3.css') }}" rel="stylesheet">
@@ -10,11 +11,16 @@
 {%  endblock %}
 {% block body %}
 
-    <h2>Plot</h2>
+    {{ d3_plot(config) }}
 
-    <div> measure: {{measure.name}} </div>
+    <div class="container ambry-small_multiples">
+        <div class="row">
+        {% for variant in variants %}
+             <div class="col-md-3">{{ d3_plot(variant)}}</div>
+        {% endfor %}
+        </div>
+    </div>
 
-    <div id="{{(config.plot.bindto)[1:]}}"></div>
 
 
 {% endblock %}
@@ -25,11 +31,21 @@
     <script src="{{ url_for('static', filename='js/bower_components/c3/c3.js') }}" charset="utf-8"></script>
 
     <script>
-    var chart = c3.generate({{ dumps(config['plot']) | safe }});
+
+        $(".ambry-plot_container").each(function() {
+            var plot = $(this).find('.ambry-c3-plot')
+            var plot_config = $( plot ).data('plotconfig')
+
+            plot_config['bindto'] = plot[0]
+
+            $(this).find('h2').text(plot_config['title'])
+            $(this).find('.csv-link').attr('href',plot_config['data']['url'])
+
+            var chart = c3.generate(plot_config);
+        });
 
     </script>
 
 
 {% endblock %}
-
 

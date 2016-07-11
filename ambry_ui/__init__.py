@@ -127,8 +127,13 @@ def get_aac():  # Ambry Application Context
 
 
 class Application(Flask):
+
     def __init__(self, app_config, import_name, static_path=None, static_url_path=None, static_folder='static',
                  template_folder='templates', instance_path=None, instance_relative_config=False):
+
+        from flask.ext.cache import Cache
+        from ambry.library import Library
+        from ambry.run import get_runconfig
 
         self._initialized = False
         self.csrf = CsrfProtect()
@@ -138,6 +143,15 @@ class Application(Flask):
                                           template_folder, instance_path, instance_relative_config)
 
         self.config.update(app_config)
+
+
+        l = Library(get_runconfig(), read_only=True, echo=False)
+
+        self.cache = Cache(config={'CACHE_TYPE': 'filesystem', 'CACHE_DIR': l.filesystem.cache('ui')})
+        self.cache.init_app(self)
+
+
+
 
     def __call__(self, environ, start_response):
 
@@ -183,6 +197,7 @@ class Application(Flask):
 
             self.login_manager.init_app(app)
             Bootstrap(app)
+
 
             self._initialized = True
 
