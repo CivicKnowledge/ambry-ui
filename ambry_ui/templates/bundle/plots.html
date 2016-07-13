@@ -23,12 +23,22 @@
             <a href="{{url_for('get_plot_data_csv',pvid=p.vid, measure=measure.name, dimpath=ds.key)}}">
                 CSV
             </a>
+            {% if ds.key == 'gvid' %}
+               <a href="{{url_for('get_plot_json',pvid=p.vid, measure=measure.name, dimpath=ds.key)}}">
+                    MapJSON
+               </a>
+                <a href="{{url_for('get_map',pvid=p.vid, measure=measure.name)}}">
+                    Map
+                </a>
+            {% endif %}
             <a href="{{url_for('get_plot_json',pvid=p.vid, measure=measure.name, dimpath=ds.key)}}">
-                JSON
+                PlotJSON
             </a>
             <a href="{{url_for('get_plot',pvid=p.vid, measure=measure.name, dimpath=ds.key)}}">
                 Plot
             </a>
+
+
             <br/>
             {# <div id="{{(config.plot.bindto)[1:]}}"></div> #}
 

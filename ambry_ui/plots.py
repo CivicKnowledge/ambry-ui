@@ -18,7 +18,7 @@ logger = app.logger
 logger = logging.getLogger('gunicorn.access')
 
 
-def plot_df(pvid, cvid, **kwargs):
+def plot_df(pvid, measure_ref, **kwargs):
     """Return a dataframe for a plot"""
 
     primary_dimension = None
@@ -29,7 +29,7 @@ def plot_df(pvid, cvid, **kwargs):
 
     md = p.measuredim
 
-    measure = md.measure(cvid)
+    measure = md.measure(measure_ref)
 
     for k, v in kwargs.items():
 
@@ -54,9 +54,12 @@ def plot_df(pvid, cvid, **kwargs):
 
     labels = df.labels
 
-    df = df[labels + [df.measure]]
+    columns = labels + [df.measure]
 
+    if 'gvid' in list(df.columns):
+        columns.append('gvid')
 
+    df = df[columns]
 
     if secondary_dimension:
         df = df.set_index(labels).unstack()
@@ -105,59 +108,6 @@ def dimension_dict(p, d):
     )
 
 
-def make_measuredim_json(pvid, cvid, primary_dimension, secondary_dimension=None):
-    """Create the JSON configuration object for the measure and dimension set,
-     which is expanded to use for the configuration for a plot or map. """
-    p = aac.library.partition(pvid)
-
-    md = p.measuredim
-
-    measure = md.measure(cvid)
-
-    dimensions = [d for d in md.primary_dimensions if p.stats_dict[d.name].nuniques > 1]
-
-    p_dim = md.dimension(primary_dimension)
-
-    s_dim = md.dimension(secondary_dimension) if secondary_dimension else None
-
-    filtered = {}
-
-    for d in dimensions:
-        if d.name != p_dim.name and (not s_dim or d.name != s_dim.name):
-            filtered[d.name] = sorted(d.pstats.uvalues)[0]
-
-    value_type = None
-
-    if p_dim.valuetype_class.is_time():
-        value_type = 'time'
-    elif p_dim.valuetype_class.is_geo():
-        value_type = 'geo'
-    else:
-        value_type = None
-
-    return dict(
-        measure={
-            'vid': measure.vid,
-            'name': measure.name,
-            'description': measure.description
-        },
-        primary_dimension=dict(
-            vid=p_dim.vid,
-            name=p_dim.name,
-            labels=p_dim.label.name if p_dim.label else p_dim.name,
-            len=p.stats_dict[p_dim.name].nuniques,
-            values=p.stats_dict[p_dim.name].uvalues,
-            value_type=value_type
-        ),
-        secondary_dimension=dict(
-            vid=s_dim.vid if s_dim else None,
-            name=s_dim.name if s_dim else None,
-            labels=s_dim.label.name if s_dim and s_dim.label else (s_dim.name if s_dim else None),
-            len=p.stats_dict[s_dim.name].nuniques if s_dim else 0,
-            values=p.stats_dict[s_dim.name].uvalues if s_dim else 0
-        ),
-        filtered=filtered
-    )
 
 def dimpath(p_dim, s_dim):
 
@@ -219,25 +169,6 @@ def make_plot_json(pvid, measure, dimpath, filters = {}):
     return plot_config
 
 
-def make_map_json(pvid, cvid, primary_dimension, secondary_dimension=None):
-    d = make_measuredim_json(pvid, cvid, primary_dimension, secondary_dimension)
-
-    data_json_url = url_for('get_plot_data_json',
-                            pvid=d['primary_dimension']['vid'],
-                            cvid=d['measure']['vid'],
-                            primary=d['primary_dimension']['name'],
-                            secondary=d['secondaru_dimension']['vid'],
-                            **d['filtered'])
-    map_config = {
-        'data': {
-            'url': data_json_url,
-            'mimeType': 'json'
-        }
-    }
-
-    d['map'] = map_config
-
-    return d
 
 #@app.cache.memoize(timeout=300)
 def measuredim_dict(pvid):
@@ -274,7 +205,6 @@ def get_plots(pvid, cvid):
                       md=md.dict,
                       **aac.cc)
 
-
 @app.route('/plots/<pvid>/data/<path:dimpath>/<measure>.csv')
 def get_plot_data_csv(pvid, dimpath, measure):
     """Return the CSV file for the data for a plot
@@ -310,7 +240,9 @@ def get_plot_data_json(pvid, dimpath, measure):
 
     b = StringIO()
 
-    df = plot_df(pvid, cvid, **dict(request.args.items()))  # Convert from MultiDict to dict
+    df = plot_df(pvid, measure, primary=dimpath)  # Assume there is only one component of path, for maps
+
+
 
     df.sort_index().reset_index().to_json(b, orient='records')
 
@@ -329,8 +261,8 @@ def get_plot_json(pvid, dimpath, measure):
     return aac.json(**d)
 
 
-@app.route('/plots/<pvid>/config/map/<cvid>.json')
-def get_map_json(pvid, cvid):
+@app.route('/plots/<pvid>/config/map/measure.json')
+def get_map_json(pvid, measure):
     """Return the json configuration for a map
     :param pvid:
     :param cvid: The measure to plot
@@ -372,25 +304,27 @@ def get_plot(pvid, dimpath, measure):
                       vid=b.identity.vid, b=b, p=p, **aac.cc)
 
 
-@app.route('/plots/<pvid>/map/<cvid>')
-def get_map(pvid, cvid):
+@app.route('/plots/<pvid>/map/<measure>')
+def get_map(pvid, measure):
     import json
 
     app.cache.set('foobar', 'foobtz')
 
-    plot_config = make_plot_json(pvid, cvid, request.args.get('primary'), request.args.get('secondary', None))
+    json_data_url = url_for('get_plot_data_json',
+                            pvid=pvid, measure=measure,
+                            dimpath='gvid')
 
     p = aac.library.partition(pvid)
     b = p.bundle
 
     md = p.measuredim
 
-    measure = md.measure(cvid)
+    measure = md.measure(measure)
 
     return aac.render('bundle/map.html',
                       measure=measure,
-                      config=plot_config,
-                      dumps=json.dumps,
+
+                      json_data_url=json_data_url,
                       vid=b.identity.vid, b=b, p=p, **aac.cc)
 
 

@@ -3,7 +3,8 @@
 {% block head %}
     {{ super() }}
     <link href="{{ url_for('static', filename='js/bower_components/c3/c3.css') }}" rel="stylesheet">
-    <link href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='js/bower_components/leaflet/dist/leaflet.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='js/bower_components/Leaflet.label/dist/leaflet.label.css') }}" rel="stylesheet">
 
 {% endblock %}
 {% block page_css %}
@@ -11,9 +12,10 @@
 {%  endblock %}
 {% block body %}
 
-    <h2>map</h2>
+    <h2>{{measure.description}}</h2>
+    <h3>By County</h3>
 
-    <div id="{{(config.plot.bindto)[1:]}}" class="ambry-map"></div>
+    <div id="ambry-map" class="ambry-map"></div>
 
 
 {% endblock %}
@@ -22,8 +24,10 @@
     {{ super() }}
     <script src="{{ url_for('static', filename='js/bower_components/d3/d3.min.js') }}" charset="utf-8"></script>
     <script src="{{ url_for('static', filename='js/bower_components/c3/c3.js') }}" charset="utf-8"></script>
-    <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
-    <script src="{{ url_for('static', filename='js/leaflet.ajax.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bower_components/leaflet/dist/leaflet.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='js/bower_components/Leaflet.label/dist/leaflet.label.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='js/bower_components/leaflet-ajax/dist/leaflet.ajax.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='js/jenks.js') }}"></script>
 
     <script>
 
@@ -41,54 +45,84 @@
               }
         };
         xobj.send(null);
-     }
+    }
 
-    var plot_config = {{ dumps(config['plot']) | safe }}
+    function buildMap(data, measureName, breaks) {
+        var map = L.map("ambry-map").setView([37.00255, -119.21265], 5);
 
-    var map = L.map(plot_config.bindto.substring(1)).setView([37.00255, -119.21265], 5);
+        // create the tile layer with correct attribution
+        var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        var osmAttrib = 'Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
+        var osm = new L.TileLayer(osmUrl, {minZoom: 5, maxZoom: 12, attribution: osmAttrib});
 
-	// create the tile layer with correct attribution
-	var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-	var osmAttrib='Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
-	var osm = new L.TileLayer(osmUrl, {minZoom: 5, maxZoom: 12, attribution: osmAttrib});
+        // From: colorbrewer2.org
+        var colors = ['#b35806','#f1a340','#fee0b6','#f7f7f7','#d8daeb','#998ec3','#542788'];
 
-    loadJSON('{{ dumps(config["json_data"]) | safe }}', function(data) {
-        //
+        function getColor(feature) {
+
+            var gvid = feature.properties.gvid;
+
+            var feature_data = data[gvid];
+
+            var data_value = feature_data[measureName];
+
+            for (var brk = 0; brk < breaks.length; brk++){
+                if (data_value < breaks[brk]){
+                    return colors[brk];
+                }
+            }
+
+            return colors[brk];
+
+        }
+
+
+        // http://leafletjs.com/reference.html#geojson
+        // FIXME! Fake URL
+        var geojsonLayer = new L.GeoJSON.AJAX("/boundaries/0E06/50", {
+            style:  function (feature){
+                return {
+                    weight: 1,
+                    opacity: 1,
+                    color: 'gray',
+                    fillColor: getColor(feature),
+                    //dashArray: '3',
+                    fillOpacity: 0.7
+                };
+            },
+            onEachFeature: function (feature, layer) {
+
+            }
+        });
+
+        //geojsonLayer.setStyle(style)
+
+        geojsonLayer.on('click', onMapClick);
+
+        function onMapClick(e) {
+            //console.log("You clicked the map at " + e.latlng);
+        }
+
+        geojsonLayer.addTo(map);
+
+        map.setView(new L.LatLng(37.00255, -119.21265), 6);
+        map.addLayer(osm);
+    }
+
+    loadJSON('{{json_data_url}}', function(data) {
+
+        var measureName = '{{measure.name}}';
+        var data_lookup = {};
+        var values = [];
+
+        for (var i=0; i < data.length; i++){
+            data_lookup[data[i].gvid] = data[i];
+            values.push(data[i][measureName]);
+        }
+
+
+        buildMap(data_lookup, measureName, jenks(values, 7));
     });
-
-    function getColor(feature) {
-        //console.log(feature.properties);
-        return 'red';
-    }
-
-    function style(feature) {
-        return {
-
-            weight: 1,
-            opacity: 1,
-            color: 'blue',
-            fillColor: getColor(feature),
-            dashArray: '3',
-            fillOpacity: 0.7
-        };
-    }
-
-    // http://leafletjs.com/reference.html#geojson
-    // FIXME! Fake URL
-    var geojsonLayer = new L.GeoJSON.AJAX( "/boundaries/0E06/50", {style:style});
-
-    //geojsonLayer.setStyle(style)
-
-    geojsonLayer.on('click', onMapClick);
-    function onMapClick(e) {
-        //console.log("You clicked the map at " + e.latlng);
-    }
-
-    geojsonLayer.addTo(map);
-
-	map.setView(new L.LatLng(37.00255, -119.21265),6);
-	map.addLayer(osm);
-
 
 
     </script>
