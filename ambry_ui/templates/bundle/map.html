@@ -2,9 +2,9 @@
 {% from 'bundle/tabs.html' import tabs %}
 {% block head %}
     {{ super() }}
-    <link href="{{ url_for('static', filename='js/bower_components/c3/c3.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='js/bower_components/leaflet/dist/leaflet.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='js/bower_components/Leaflet.label/dist/leaflet.label.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='bower_components/c3/c3.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='bower_components/leaflet/dist/leaflet.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='bower_components/Leaflet.label/dist/leaflet.label.css') }}" rel="stylesheet">
 
 {% endblock %}
 {% block page_css %}
@@ -22,11 +22,11 @@
 
 {% block tailjs %}
     {{ super() }}
-    <script src="{{ url_for('static', filename='js/bower_components/d3/d3.min.js') }}" charset="utf-8"></script>
-    <script src="{{ url_for('static', filename='js/bower_components/c3/c3.js') }}" charset="utf-8"></script>
-    <script src="{{ url_for('static', filename='js/bower_components/leaflet/dist/leaflet.js') }}" charset="utf-8"></script>
-    <script src="{{ url_for('static', filename='js/bower_components/Leaflet.label/dist/leaflet.label.js') }}" charset="utf-8"></script>
-    <script src="{{ url_for('static', filename='js/bower_components/leaflet-ajax/dist/leaflet.ajax.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='bower_components/d3/d3.min.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='bower_components/c3/c3.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='bower_components/leaflet/dist/leaflet.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='bower_components/Leaflet.label/dist/leaflet.label.js') }}" charset="utf-8"></script>
+    <script src="{{ url_for('static', filename='bower_components/leaflet-ajax/dist/leaflet.ajax.js') }}" charset="utf-8"></script>
     <script src="{{ url_for('static', filename='js/jenks.js') }}"></script>
 
     <script>
