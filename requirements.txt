@@ -14,3 +14,5 @@ gunicorn==18 # I can't get 19 to run ...
 notebook
 nbformat
 nbconvert
+pandas
+geojson
